@@ -2,6 +2,7 @@ package utils
 
 import (
 	"fmt"
+	"os"
 	"os/exec"
 	"runtime"
 	"strings"
@@ -300,20 +301,130 @@ func FormatBytes(bytes uint64) string {
 
 // GetHardwareInfo returns detailed hardware information
 func GetHardwareInfo() (string, error) {
-	// Try lshw first (more detailed)
+	var result strings.Builder
+
+	// Try lshw first (more detailed, requires sudo)
 	cmd := exec.Command("lshw", "-short")
 	output, err := cmd.Output()
 	if err == nil {
 		return string(output), nil
 	}
 
-	// Fallback to dmidecode
+	// Try dmidecode (requires sudo)
 	cmd = exec.Command("dmidecode", "-t", "system,baseboard,processor,memory")
 	output, err = cmd.Output()
-	if err != nil {
-		return "Hardware information unavailable. Please run with sudo or install lshw/dmidecode.", nil
+	if err == nil {
+		return string(output), nil
 	}
-	return string(output), nil
+
+	// Fallback: Read hardware info from /proc (doesn't require sudo)
+	result.WriteString("=== Hardware Information ===\n")
+	result.WriteString("(For detailed info, run with sudo)\n\n")
+
+	// CPU Information from /proc/cpuinfo
+	cpuinfo, err := os.ReadFile("/proc/cpuinfo")
+	if err == nil {
+		result.WriteString("--- CPU Information ---\n")
+		lines := strings.Split(string(cpuinfo), "\n")
+
+		// Track CPU cores
+		coreCount := 0
+		seen := make(map[string]bool)
+
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+
+			// Get model name
+			if strings.HasPrefix(line, "model name") {
+				if parts := strings.SplitN(line, ":", 2); len(parts) == 2 {
+					model := strings.TrimSpace(parts[1])
+					if !seen["model"] {
+						result.WriteString(fmt.Sprintf("Model: %s\n", model))
+						seen["model"] = true
+					}
+				}
+			}
+
+			// Count processors
+			if strings.HasPrefix(line, "processor") {
+				coreCount++
+			}
+
+			// Get CPU MHz
+			if strings.HasPrefix(line, "cpu MHz") && !seen["mhz"] {
+				if parts := strings.SplitN(line, ":", 2); len(parts) == 2 {
+					result.WriteString(fmt.Sprintf("CPU MHz: %s\n", strings.TrimSpace(parts[1])))
+					seen["mhz"] = true
+				}
+			}
+
+			// Get cache size
+			if strings.HasPrefix(line, "cache size") && !seen["cache"] {
+				if parts := strings.SplitN(line, ":", 2); len(parts) == 2 {
+					result.WriteString(fmt.Sprintf("Cache Size: %s\n", strings.TrimSpace(parts[1])))
+					seen["cache"] = true
+				}
+			}
+		}
+
+		result.WriteString(fmt.Sprintf("CPU Cores: %d\n\n", coreCount))
+	}
+
+	// Memory Information from /proc/meminfo
+	meminfo, err := os.ReadFile("/proc/meminfo")
+	if err == nil {
+		result.WriteString("--- Memory Information ---\n")
+		lines := strings.Split(string(meminfo), "\n")
+
+		for _, line := range lines {
+			line = strings.TrimSpace(line)
+
+			// Show key memory metrics
+			if strings.HasPrefix(line, "MemTotal:") ||
+			   strings.HasPrefix(line, "MemAvailable:") ||
+			   strings.HasPrefix(line, "SwapTotal:") ||
+			   strings.HasPrefix(line, "SwapFree:") {
+				if parts := strings.SplitN(line, ":", 2); len(parts) == 2 {
+					result.WriteString(fmt.Sprintf("%s: %s\n", parts[0], strings.TrimSpace(parts[1])))
+				}
+			}
+		}
+		result.WriteString("\n")
+	}
+
+	// PCI Devices (if lspci is available, doesn't require sudo)
+	cmd = exec.Command("lspci")
+	output, err = cmd.Output()
+	if err == nil {
+		result.WriteString("--- PCI Devices ---\n")
+		result.WriteString(string(output))
+		result.WriteString("\n")
+	}
+
+	// USB Devices (if lsusb is available, doesn't require sudo)
+	cmd = exec.Command("lsusb")
+	output, err = cmd.Output()
+	if err == nil {
+		result.WriteString("--- USB Devices ---\n")
+		result.WriteString(string(output))
+		result.WriteString("\n")
+	}
+
+	// Block Devices
+	cmd = exec.Command("lsblk", "-o", "NAME,SIZE,TYPE,MOUNTPOINT,MODEL")
+	output, err = cmd.Output()
+	if err == nil {
+		result.WriteString("--- Block Devices ---\n")
+		result.WriteString(string(output))
+		result.WriteString("\n")
+	}
+
+	resultStr := result.String()
+	if len(resultStr) == 0 {
+		return "Hardware information unavailable.", nil
+	}
+
+	return resultStr, nil
 }
 
 // NetworkInterface represents a network interface
