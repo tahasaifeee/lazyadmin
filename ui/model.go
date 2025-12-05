@@ -22,6 +22,7 @@ const (
 	subPanelServices
 	subPanelProcesses
 	subPanelDisk
+	subPanelUsersGroups
 )
 
 type Model struct {
@@ -38,6 +39,7 @@ type Model struct {
 	servicesPanel        *panels.ServicesPanel
 	processesPanel       *panels.ProcessesPanel
 	diskPanel            *panels.DiskPanel
+	usersGroupsPanel     *panels.UsersGroupsPanel
 
 	// Navigation
 	activeSubPanel  systemSubPanel
@@ -61,6 +63,7 @@ func NewModel() Model {
 		servicesPanel:        panels.NewServicesPanel(),
 		processesPanel:       panels.NewProcessesPanel(),
 		diskPanel:            panels.NewDiskPanel(),
+		usersGroupsPanel:     panels.NewUsersGroupsPanel(),
 
 		activeSubPanel: subPanelSummary,
 		inSubmenu:      true,
@@ -128,6 +131,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		case "9":
 			m.activeSubPanel = subPanelDisk
 			m.inSubmenu = false
+		case "0":
+			m.activeSubPanel = subPanelUsersGroups
+			m.inSubmenu = false
+
+		// Toggle users/groups view
+		case "t":
+			if m.activeSubPanel == subPanelUsersGroups && !m.inSubmenu {
+				m.usersGroupsPanel.ToggleView()
+			}
 
 		// Navigation within menu
 		case "up", "k":
@@ -153,13 +165,15 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.processesPanel.MoveUp()
 				case subPanelDisk:
 					m.diskPanel.MoveUp()
+				case subPanelUsersGroups:
+					m.usersGroupsPanel.MoveUp()
 				}
 			}
 
 		case "down", "j":
 			if m.inSubmenu {
 				// Navigate menu
-				if m.activeSubPanel < subPanelDisk {
+				if m.activeSubPanel < subPanelUsersGroups {
 					m.activeSubPanel++
 				}
 			} else {
@@ -179,6 +193,8 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 					m.processesPanel.MoveDown()
 				case subPanelDisk:
 					m.diskPanel.MoveDown()
+				case subPanelUsersGroups:
+					m.usersGroupsPanel.MoveDown()
 				}
 			}
 
@@ -226,6 +242,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.servicesPanel.Update()
 		m.processesPanel.Update()
 		m.diskPanel.Update()
+		m.usersGroupsPanel.Update()
 		return m, tickCmd()
 	}
 
@@ -298,6 +315,8 @@ func (m Model) renderPanels() string {
 		activePanel = m.processesPanel.Render(panelWidth, contentHeight, !m.inSubmenu)
 	case subPanelDisk:
 		activePanel = m.diskPanel.Render(panelWidth, contentHeight, !m.inSubmenu)
+	case subPanelUsersGroups:
+		activePanel = m.usersGroupsPanel.Render(panelWidth, contentHeight, !m.inSubmenu)
 	}
 
 	// Join horizontally
@@ -324,6 +343,7 @@ func (m Model) renderMenu(width, height int) string {
 		{"7", "Services", subPanelServices, styles.SubMenuStyle7},
 		{"8", "Processes", subPanelProcesses, styles.SubMenuStyle8},
 		{"9", "Disk Usage", subPanelDisk, styles.SubMenuStyle9},
+		{"0", "Users & Groups", subPanelUsersGroups, styles.SubMenuStyle10},
 	}
 
 	var items []string
@@ -363,9 +383,11 @@ func (m Model) renderMenu(width, height int) string {
 }
 
 func (m Model) renderStatusBar() string {
-	leftSection := " 1-9: Quick Jump | ↑↓/jk: Navigate | Enter: Select | Esc: Back"
+	leftSection := " 0-9: Quick Jump | ↑↓/jk: Navigate | Enter: Select | Esc: Back"
 	if m.activeSubPanel == subPanelServices && !m.inSubmenu {
 		leftSection = " s:Start | x:Stop | r:Restart | e:Enable | d:Disable | Esc: Back"
+	} else if m.activeSubPanel == subPanelUsersGroups && !m.inSubmenu {
+		leftSection = " t:Toggle Users/Groups | ↑↓/jk: Navigate | Esc: Back"
 	}
 	leftSection += " | ?: Help | q: Quit "
 
@@ -391,11 +413,12 @@ func (m Model) renderHelp() string {
 		"",
 		styles.TitleStyle.Render("Navigation"),
 		"",
-		m.renderHelpRow("1-9", "Quick jump to menu item"),
+		m.renderHelpRow("0-9", "Quick jump to menu item"),
 		m.renderHelpRow("↑/k", "Move selection up"),
 		m.renderHelpRow("↓/j", "Move selection down"),
 		m.renderHelpRow("Enter", "View selected menu item"),
 		m.renderHelpRow("Esc", "Return to menu"),
+		m.renderHelpRow("t", "Toggle users/groups (in Users panel)"),
 		"",
 		styles.TitleStyle.Render("Menu Options"),
 		"",
@@ -408,6 +431,7 @@ func (m Model) renderHelp() string {
 		styles.SubMenuStyle7.Render(m.renderHelpRow("7", "Services Management")),
 		styles.SubMenuStyle8.Render(m.renderHelpRow("8", "Process Monitor")),
 		styles.SubMenuStyle9.Render(m.renderHelpRow("9", "Disk Usage")),
+		styles.SubMenuStyle10.Render(m.renderHelpRow("0", "Users & Groups Management")),
 		"",
 		styles.TitleStyle.Render("Service Control (Services Panel - Press 7)"),
 		"",
