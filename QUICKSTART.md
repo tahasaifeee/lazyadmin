@@ -2,7 +2,33 @@
 
 This guide will help you quickly install and start using LazyAdmin on your Linux system.
 
-## Installation (3 Simple Steps)
+## Fastest Installation (1 Command) ⚡
+
+Run this single command to install LazyAdmin:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/tahasaifeee/lazyadmin/main/install.sh | sudo bash
+```
+
+Or with `wget`:
+
+```bash
+wget -qO- https://raw.githubusercontent.com/tahasaifeee/lazyadmin/main/install.sh | sudo bash
+```
+
+Then run:
+
+```bash
+lazyadmin
+```
+
+That's it! LazyAdmin is now installed and running on your system.
+
+---
+
+## Alternative Installation (3 Simple Steps)
+
+If you prefer to clone the repository first:
 
 ### Step 1: Clone the Repository
 
@@ -28,8 +54,6 @@ sudo make install
 ```bash
 lazyadmin
 ```
-
-That's it! LazyAdmin is now installed and running on your system.
 
 ## First Time Usage
 
