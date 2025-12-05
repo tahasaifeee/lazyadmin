@@ -10,19 +10,36 @@ import (
 	"github.com/tahasaifeee/lazyadmin/ui/panels"
 )
 
+type mainSection int
 type systemSubPanel int
+type userSubPanel int
 
 const (
-	subPanelSummary systemSubPanel = iota
-	subPanelHardware
-	subPanelFilesystems
-	subPanelNetwork
-	subPanelPorts
-	subPanelLogs
-	subPanelServices
-	subPanelProcesses
-	subPanelDisk
-	subPanelUsersGroups
+	sectionSystem mainSection = iota
+	sectionUserManagement
+)
+
+const (
+	subSystemSummary systemSubPanel = iota
+	subSystemHardware
+	subSystemFilesystems
+	subSystemNetwork
+	subSystemPorts
+	subSystemLogs
+	subSystemServices
+	subSystemProcesses
+	subSystemDisk
+)
+
+const (
+	subUserList userSubPanel = iota
+	subUserCreate
+	subUserDelete
+	subUserAddGroup
+	subUserRemoveGroup
+	subUserPassword
+	subUserShell
+	subUserLockUnlock
 )
 
 type Model struct {
@@ -42,8 +59,11 @@ type Model struct {
 	usersGroupsPanel     *panels.UsersGroupsPanel
 
 	// Navigation
-	activeSubPanel  systemSubPanel
-	inSubmenu       bool
+	activeSection   mainSection
+	activeSystemSub systemSubPanel
+	activeUserSub   userSubPanel
+	inMainMenu      bool // true when selecting main sections
+	inSubmenu       bool // true when navigating sub-items
 	showHelp        bool
 
 	// Update ticker
@@ -65,10 +85,13 @@ func NewModel() Model {
 		diskPanel:            panels.NewDiskPanel(),
 		usersGroupsPanel:     panels.NewUsersGroupsPanel(),
 
-		activeSubPanel: subPanelSummary,
-		inSubmenu:      true,
-		showHelp:       false,
-		lastUpdate:     time.Now(),
+		activeSection:   sectionSystem,
+		activeSystemSub: subSystemSummary,
+		activeUserSub:   subUserList,
+		inMainMenu:      true,
+		inSubmenu:       true,
+		showHelp:        false,
+		lastUpdate:      time.Now(),
 	}
 }
 
@@ -97,132 +120,251 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "esc":
-			// Go back to menu if in content view
-			if !m.inSubmenu {
+			// Go back through menu levels
+			if !m.inSubmenu && !m.inMainMenu {
+				// From content -> submenu
 				m.inSubmenu = true
+			} else if !m.inMainMenu {
+				// From submenu -> main menu
+				m.inMainMenu = true
+				m.inSubmenu = false
 			}
 			return m, nil
 
-		// Direct navigation keys (numbers only to avoid conflicts)
+		// Main section selection (1 or 2)
 		case "1":
-			m.activeSubPanel = subPanelSummary
-			m.inSubmenu = false
+			if m.inMainMenu {
+				m.activeSection = sectionSystem
+				m.inMainMenu = false
+				m.inSubmenu = true
+				m.activeSystemSub = subSystemSummary
+			} else if m.activeSection == sectionSystem && m.inSubmenu {
+				// Quick jump to sub-option 1
+				m.activeSystemSub = subSystemSummary
+				m.inSubmenu = false
+			}
+
 		case "2":
-			m.activeSubPanel = subPanelHardware
-			m.inSubmenu = false
+			if m.inMainMenu {
+				m.activeSection = sectionUserManagement
+				m.inMainMenu = false
+				m.inSubmenu = true
+				m.activeUserSub = subUserList
+			} else if m.activeSection == sectionSystem && m.inSubmenu {
+				m.activeSystemSub = subSystemHardware
+				m.inSubmenu = false
+			}
+
+		// System Information sub-options (when in System section submenu)
 		case "3":
-			m.activeSubPanel = subPanelFilesystems
-			m.inSubmenu = false
+			if m.activeSection == sectionSystem && m.inSubmenu {
+				m.activeSystemSub = subSystemFilesystems
+				m.inSubmenu = false
+			}
 		case "4":
-			m.activeSubPanel = subPanelNetwork
-			m.inSubmenu = false
+			if m.activeSection == sectionSystem && m.inSubmenu {
+				m.activeSystemSub = subSystemNetwork
+				m.inSubmenu = false
+			}
 		case "5":
-			m.activeSubPanel = subPanelPorts
-			m.inSubmenu = false
+			if m.activeSection == sectionSystem && m.inSubmenu {
+				m.activeSystemSub = subSystemPorts
+				m.inSubmenu = false
+			}
 		case "6":
-			m.activeSubPanel = subPanelLogs
-			m.inSubmenu = false
+			if m.activeSection == sectionSystem && m.inSubmenu {
+				m.activeSystemSub = subSystemLogs
+				m.inSubmenu = false
+			}
 		case "7":
-			m.activeSubPanel = subPanelServices
-			m.inSubmenu = false
+			if m.activeSection == sectionSystem && m.inSubmenu {
+				m.activeSystemSub = subSystemServices
+				m.inSubmenu = false
+			}
 		case "8":
-			m.activeSubPanel = subPanelProcesses
-			m.inSubmenu = false
+			if m.activeSection == sectionSystem && m.inSubmenu {
+				m.activeSystemSub = subSystemProcesses
+				m.inSubmenu = false
+			}
 		case "9":
-			m.activeSubPanel = subPanelDisk
-			m.inSubmenu = false
-		case "0":
-			m.activeSubPanel = subPanelUsersGroups
-			m.inSubmenu = false
+			if m.activeSection == sectionSystem && m.inSubmenu {
+				m.activeSystemSub = subSystemDisk
+				m.inSubmenu = false
+			}
+
+		// User Management sub-options (when in User Management section submenu)
+		case "a":
+			if m.activeSection == sectionUserManagement && m.inSubmenu {
+				m.activeUserSub = subUserList
+				m.inSubmenu = false
+			}
+		case "b":
+			if m.activeSection == sectionUserManagement && m.inSubmenu {
+				m.activeUserSub = subUserCreate
+				m.inSubmenu = false
+			}
+		case "c":
+			if m.activeSection == sectionUserManagement && m.inSubmenu {
+				m.activeUserSub = subUserDelete
+				m.inSubmenu = false
+			}
+		case "d":
+			if m.activeSection == sectionUserManagement && m.inSubmenu {
+				m.activeUserSub = subUserAddGroup
+				m.inSubmenu = false
+			}
+		case "e":
+			if m.activeSection == sectionUserManagement && m.inSubmenu {
+				m.activeUserSub = subUserRemoveGroup
+				m.inSubmenu = false
+			}
+		case "f":
+			if m.activeSection == sectionUserManagement && m.inSubmenu {
+				m.activeUserSub = subUserPassword
+				m.inSubmenu = false
+			}
+		case "g":
+			if m.activeSection == sectionUserManagement && m.inSubmenu {
+				m.activeUserSub = subUserShell
+				m.inSubmenu = false
+			}
+		case "h":
+			if m.activeSection == sectionUserManagement && m.inSubmenu {
+				m.activeUserSub = subUserLockUnlock
+				m.inSubmenu = false
+			}
 
 		// Toggle users/groups view
 		case "t":
-			if m.activeSubPanel == subPanelUsersGroups && !m.inSubmenu {
+			if m.activeSection == sectionUserManagement &&
+			   m.activeUserSub == subUserList && !m.inSubmenu && !m.inMainMenu {
 				m.usersGroupsPanel.ToggleView()
 			}
 
-		// Navigation within menu
+		// Navigation within menus
 		case "up", "k":
-			if m.inSubmenu {
-				// Navigate menu
-				if m.activeSubPanel > 0 {
-					m.activeSubPanel--
+			if m.inMainMenu {
+				// Navigate main sections
+				if m.activeSection > 0 {
+					m.activeSection--
+				}
+			} else if m.inSubmenu {
+				// Navigate submenu items
+				if m.activeSection == sectionSystem {
+					if m.activeSystemSub > 0 {
+						m.activeSystemSub--
+					}
+				} else {
+					if m.activeUserSub > 0 {
+						m.activeUserSub--
+					}
 				}
 			} else {
 				// Navigate content
-				switch m.activeSubPanel {
-				case subPanelHardware:
-					m.hardwareInfoPanel.MoveUp()
-				case subPanelFilesystems:
-					m.filesystemsInfoPanel.MoveUp()
-				case subPanelPorts:
-					m.portsInfoPanel.MoveUp()
-				case subPanelLogs:
-					m.systemLogsPanel.MoveUp()
-				case subPanelServices:
-					m.servicesPanel.MoveUp()
-				case subPanelProcesses:
-					m.processesPanel.MoveUp()
-				case subPanelDisk:
-					m.diskPanel.MoveUp()
-				case subPanelUsersGroups:
-					m.usersGroupsPanel.MoveUp()
+				if m.activeSection == sectionSystem {
+					switch m.activeSystemSub {
+					case subSystemHardware:
+						m.hardwareInfoPanel.MoveUp()
+					case subSystemFilesystems:
+						m.filesystemsInfoPanel.MoveUp()
+					case subSystemPorts:
+						m.portsInfoPanel.MoveUp()
+					case subSystemLogs:
+						m.systemLogsPanel.MoveUp()
+					case subSystemServices:
+						m.servicesPanel.MoveUp()
+					case subSystemProcesses:
+						m.processesPanel.MoveUp()
+					case subSystemDisk:
+						m.diskPanel.MoveUp()
+					}
+				} else {
+					if m.activeUserSub == subUserList {
+						m.usersGroupsPanel.MoveUp()
+					}
 				}
 			}
 
 		case "down", "j":
-			if m.inSubmenu {
-				// Navigate menu
-				if m.activeSubPanel < subPanelUsersGroups {
-					m.activeSubPanel++
+			if m.inMainMenu {
+				// Navigate main sections
+				if m.activeSection < sectionUserManagement {
+					m.activeSection++
+				}
+			} else if m.inSubmenu {
+				// Navigate submenu items
+				if m.activeSection == sectionSystem {
+					if m.activeSystemSub < subSystemDisk {
+						m.activeSystemSub++
+					}
+				} else {
+					if m.activeUserSub < subUserLockUnlock {
+						m.activeUserSub++
+					}
 				}
 			} else {
 				// Navigate content
-				switch m.activeSubPanel {
-				case subPanelHardware:
-					m.hardwareInfoPanel.MoveDown()
-				case subPanelFilesystems:
-					m.filesystemsInfoPanel.MoveDown()
-				case subPanelPorts:
-					m.portsInfoPanel.MoveDown()
-				case subPanelLogs:
-					m.systemLogsPanel.MoveDown()
-				case subPanelServices:
-					m.servicesPanel.MoveDown()
-				case subPanelProcesses:
-					m.processesPanel.MoveDown()
-				case subPanelDisk:
-					m.diskPanel.MoveDown()
-				case subPanelUsersGroups:
-					m.usersGroupsPanel.MoveDown()
+				if m.activeSection == sectionSystem {
+					switch m.activeSystemSub {
+					case subSystemHardware:
+						m.hardwareInfoPanel.MoveDown()
+					case subSystemFilesystems:
+						m.filesystemsInfoPanel.MoveDown()
+					case subSystemPorts:
+						m.portsInfoPanel.MoveDown()
+					case subSystemLogs:
+						m.systemLogsPanel.MoveDown()
+					case subSystemServices:
+						m.servicesPanel.MoveDown()
+					case subSystemProcesses:
+						m.processesPanel.MoveDown()
+					case subSystemDisk:
+						m.diskPanel.MoveDown()
+					}
+				} else {
+					if m.activeUserSub == subUserList {
+						m.usersGroupsPanel.MoveDown()
+					}
 				}
 			}
 
 		case "enter":
-			// Enter the selected submenu item
-			if m.inSubmenu {
+			// Enter the selected item
+			if m.inMainMenu {
+				m.inMainMenu = false
+				m.inSubmenu = true
+			} else if m.inSubmenu {
 				m.inSubmenu = false
 			}
 
-		// Service control actions (only for services panel)
+		// Service control actions
 		case "s":
-			if m.activeSubPanel == subPanelServices && !m.inSubmenu {
+			if m.activeSection == sectionSystem &&
+			   m.activeSystemSub == subSystemServices && !m.inSubmenu && !m.inMainMenu {
 				m.servicesPanel.StartService()
 			}
 		case "x":
-			if m.activeSubPanel == subPanelServices && !m.inSubmenu {
+			if m.activeSection == sectionSystem &&
+			   m.activeSystemSub == subSystemServices && !m.inSubmenu && !m.inMainMenu {
 				m.servicesPanel.StopService()
 			}
 		case "r":
-			if m.activeSubPanel == subPanelServices && !m.inSubmenu {
+			if m.activeSection == sectionSystem &&
+			   m.activeSystemSub == subSystemServices && !m.inSubmenu && !m.inMainMenu {
 				m.servicesPanel.RestartService()
 			}
-		case "e":
-			if m.activeSubPanel == subPanelServices && !m.inSubmenu {
+		}
+
+		// Handle e/d for services separately to avoid conflicts
+		if msg.String() == "e" {
+			if m.activeSection == sectionSystem &&
+			   m.activeSystemSub == subSystemServices && !m.inSubmenu && !m.inMainMenu {
 				m.servicesPanel.EnableService()
 			}
-		case "d":
-			if m.activeSubPanel == subPanelServices && !m.inSubmenu {
+		}
+		if msg.String() == "d" {
+			if m.activeSection == sectionSystem &&
+			   m.activeSystemSub == subSystemServices && !m.inSubmenu && !m.inMainMenu {
 				m.servicesPanel.DisableService()
 			}
 		}
@@ -254,10 +396,8 @@ func (m Model) View() string {
 		return "Loading..."
 	}
 
-	// Header
 	header := m.renderHeader()
 
-	// Main content area
 	var content string
 	if m.showHelp {
 		content = m.renderHelp()
@@ -265,10 +405,8 @@ func (m Model) View() string {
 		content = m.renderPanels()
 	}
 
-	// Status bar
 	statusBar := m.renderStatusBar()
 
-	// Combine all sections
 	return lipgloss.JoinVertical(
 		lipgloss.Left,
 		header,
@@ -285,41 +423,43 @@ func (m Model) renderHeader() string {
 }
 
 func (m Model) renderPanels() string {
-	// Calculate dimensions
-	contentHeight := m.height - 4 // subtract header and status bar
+	contentHeight := m.height - 4
 
-	// Left column (menu) - wider to fit all options
-	menuWidth := 45
+	menuWidth := 50
 	menu := m.renderMenu(menuWidth, contentHeight)
 
-	// Right column (panels)
 	panelWidth := m.width - menuWidth - 2
 
 	var activePanel string
-	switch m.activeSubPanel {
-	case subPanelSummary:
-		activePanel = m.systemSummaryPanel.Render(panelWidth, contentHeight, !m.inSubmenu)
-	case subPanelHardware:
-		activePanel = m.hardwareInfoPanel.Render(panelWidth, contentHeight, !m.inSubmenu)
-	case subPanelFilesystems:
-		activePanel = m.filesystemsInfoPanel.Render(panelWidth, contentHeight, !m.inSubmenu)
-	case subPanelNetwork:
-		activePanel = m.networkInfoPanel.Render(panelWidth, contentHeight, !m.inSubmenu)
-	case subPanelPorts:
-		activePanel = m.portsInfoPanel.Render(panelWidth, contentHeight, !m.inSubmenu)
-	case subPanelLogs:
-		activePanel = m.systemLogsPanel.Render(panelWidth, contentHeight, !m.inSubmenu)
-	case subPanelServices:
-		activePanel = m.servicesPanel.Render(panelWidth, contentHeight, !m.inSubmenu)
-	case subPanelProcesses:
-		activePanel = m.processesPanel.Render(panelWidth, contentHeight, !m.inSubmenu)
-	case subPanelDisk:
-		activePanel = m.diskPanel.Render(panelWidth, contentHeight, !m.inSubmenu)
-	case subPanelUsersGroups:
-		activePanel = m.usersGroupsPanel.Render(panelWidth, contentHeight, !m.inSubmenu)
+	if m.activeSection == sectionSystem {
+		switch m.activeSystemSub {
+		case subSystemSummary:
+			activePanel = m.systemSummaryPanel.Render(panelWidth, contentHeight, !m.inSubmenu && !m.inMainMenu)
+		case subSystemHardware:
+			activePanel = m.hardwareInfoPanel.Render(panelWidth, contentHeight, !m.inSubmenu && !m.inMainMenu)
+		case subSystemFilesystems:
+			activePanel = m.filesystemsInfoPanel.Render(panelWidth, contentHeight, !m.inSubmenu && !m.inMainMenu)
+		case subSystemNetwork:
+			activePanel = m.networkInfoPanel.Render(panelWidth, contentHeight, !m.inSubmenu && !m.inMainMenu)
+		case subSystemPorts:
+			activePanel = m.portsInfoPanel.Render(panelWidth, contentHeight, !m.inSubmenu && !m.inMainMenu)
+		case subSystemLogs:
+			activePanel = m.systemLogsPanel.Render(panelWidth, contentHeight, !m.inSubmenu && !m.inMainMenu)
+		case subSystemServices:
+			activePanel = m.servicesPanel.Render(panelWidth, contentHeight, !m.inSubmenu && !m.inMainMenu)
+		case subSystemProcesses:
+			activePanel = m.processesPanel.Render(panelWidth, contentHeight, !m.inSubmenu && !m.inMainMenu)
+		case subSystemDisk:
+			activePanel = m.diskPanel.Render(panelWidth, contentHeight, !m.inSubmenu && !m.inMainMenu)
+		}
+	} else {
+		switch m.activeUserSub {
+		case subUserList, subUserCreate, subUserDelete, subUserAddGroup,
+		     subUserRemoveGroup, subUserPassword, subUserShell, subUserLockUnlock:
+			activePanel = m.usersGroupsPanel.Render(panelWidth, contentHeight, !m.inSubmenu && !m.inMainMenu)
+		}
 	}
 
-	// Join horizontally
 	return lipgloss.JoinHorizontal(
 		lipgloss.Top,
 		menu,
@@ -328,50 +468,111 @@ func (m Model) renderPanels() string {
 }
 
 func (m Model) renderMenu(width, height int) string {
-	menuItems := []struct {
-		key      string
-		label    string
-		subPanel systemSubPanel
-		style    lipgloss.Style
-	}{
-		{"1", "System Summary", subPanelSummary, styles.SubMenuStyle1},
-		{"2", "Hardware Info", subPanelHardware, styles.SubMenuStyle2},
-		{"3", "Filesystems", subPanelFilesystems, styles.SubMenuStyle3},
-		{"4", "Network Interfaces", subPanelNetwork, styles.SubMenuStyle4},
-		{"5", "Listening Ports", subPanelPorts, styles.SubMenuStyle5},
-		{"6", "System Logs", subPanelLogs, styles.SubMenuStyle6},
-		{"7", "Services", subPanelServices, styles.SubMenuStyle7},
-		{"8", "Processes", subPanelProcesses, styles.SubMenuStyle8},
-		{"9", "Disk Usage", subPanelDisk, styles.SubMenuStyle9},
-		{"0", "Users & Groups", subPanelUsersGroups, styles.SubMenuStyle10},
-	}
-
 	var items []string
-	items = append(items, styles.TitleStyle.Render("System Information"))
-	items = append(items, "")
 
-	// Render menu items with colors
-	for _, item := range menuItems {
-		var itemStr string
-		prefix := "  "
+	if m.inMainMenu {
+		// Show main sections
+		items = append(items, styles.TitleStyle.Render("═══ Main Menu ═══"))
+		items = append(items, "")
 
-		if m.activeSubPanel == item.subPanel {
-			if m.inSubmenu {
-				// Highlight with selection indicator in menu mode
-				itemStr = styles.SelectedItemStyle.Render(fmt.Sprintf("▶ [%s] %s",
-					item.key, item.label))
-			} else {
-				// Active but in content mode - show with bold style
-				boldStyle := item.style.Copy().Bold(true)
-				itemStr = boldStyle.Render(fmt.Sprintf("%s[%s] %s",
-					prefix, item.key, item.label))
-			}
+		// System Information
+		sysStyle := styles.MenuItemStyle
+		if m.activeSection == sectionSystem {
+			sysStyle = styles.ActiveMenuItemStyle
+			items = append(items, sysStyle.Render("▶ [1] System Information"))
 		} else {
-			// Inactive - show with colored style
-			itemStr = item.style.Render(fmt.Sprintf("%s[%s] %s",
-				prefix, item.key, item.label))
+			items = append(items, sysStyle.Render("  [1] System Information"))
 		}
-		items = append(items, itemStr)
+
+		// User & Group Management
+		userStyle := styles.MenuItemStyle
+		if m.activeSection == sectionUserManagement {
+			userStyle = styles.ActiveMenuItemStyle
+			items = append(items, userStyle.Render("▶ [2] User & Group Management"))
+		} else {
+			items = append(items, userStyle.Render("  [2] User & Group Management"))
+		}
+
+		items = append(items, "")
+		items = append(items, styles.HelpStyle.Render("Press Enter to expand →"))
+
+	} else {
+		// Show submenu based on active section
+		if m.activeSection == sectionSystem {
+			items = append(items, styles.TitleStyle.Render("1. System Information"))
+			items = append(items, "")
+
+			systemItems := []struct {
+				key   string
+				label string
+				sub   systemSubPanel
+				style lipgloss.Style
+			}{
+				{"1", "System Summary", subSystemSummary, styles.SubMenuStyle1},
+				{"2", "Hardware Info", subSystemHardware, styles.SubMenuStyle2},
+				{"3", "Filesystems", subSystemFilesystems, styles.SubMenuStyle3},
+				{"4", "Network Interfaces", subSystemNetwork, styles.SubMenuStyle4},
+				{"5", "Listening Ports", subSystemPorts, styles.SubMenuStyle5},
+				{"6", "System Logs", subSystemLogs, styles.SubMenuStyle6},
+				{"7", "Services", subSystemServices, styles.SubMenuStyle7},
+				{"8", "Processes", subSystemProcesses, styles.SubMenuStyle8},
+				{"9", "Disk Usage", subSystemDisk, styles.SubMenuStyle9},
+			}
+
+			for _, item := range systemItems {
+				var itemStr string
+				prefix := "  "
+
+				if m.activeSystemSub == item.sub {
+					if m.inSubmenu {
+						itemStr = styles.SelectedItemStyle.Render(fmt.Sprintf("▶ [%s] %s", item.key, item.label))
+					} else {
+						boldStyle := item.style.Copy().Bold(true)
+						itemStr = boldStyle.Render(fmt.Sprintf("%s[%s] %s", prefix, item.key, item.label))
+					}
+				} else {
+					itemStr = item.style.Render(fmt.Sprintf("%s[%s] %s", prefix, item.key, item.label))
+				}
+				items = append(items, itemStr)
+			}
+
+		} else {
+			items = append(items, styles.TitleStyle.Render("2. User & Group Management"))
+			items = append(items, "")
+
+			userItems := []struct {
+				key   string
+				label string
+				sub   userSubPanel
+				style lipgloss.Style
+			}{
+				{"a", "List Users & Groups", subUserList, styles.SubMenuStyle1},
+				{"b", "Create User", subUserCreate, styles.SubMenuStyle2},
+				{"c", "Delete User", subUserDelete, styles.SubMenuStyle5},
+				{"d", "Add User to Group", subUserAddGroup, styles.SubMenuStyle4},
+				{"e", "Remove User from Group", subUserRemoveGroup, styles.SubMenuStyle3},
+				{"f", "Set/Reset Password", subUserPassword, styles.SubMenuStyle6},
+				{"g", "Change User Shell", subUserShell, styles.SubMenuStyle7},
+				{"h", "Lock/Unlock User", subUserLockUnlock, styles.SubMenuStyle8},
+			}
+
+			for _, item := range userItems {
+				var itemStr string
+				prefix := "  "
+
+				if m.activeUserSub == item.sub {
+					if m.inSubmenu {
+						itemStr = styles.SelectedItemStyle.Render(fmt.Sprintf("▶ [%s] %s", item.key, item.label))
+					} else {
+						boldStyle := item.style.Copy().Bold(true)
+						itemStr = boldStyle.Render(fmt.Sprintf("%s[%s] %s", prefix, item.key, item.label))
+					}
+				} else {
+					itemStr = item.style.Render(fmt.Sprintf("%s[%s] %s", prefix, item.key, item.label))
+				}
+				items = append(items, itemStr)
+			}
+		}
 	}
 
 	content := lipgloss.JoinVertical(lipgloss.Left, items...)
@@ -383,12 +584,26 @@ func (m Model) renderMenu(width, height int) string {
 }
 
 func (m Model) renderStatusBar() string {
-	leftSection := " 0-9: Quick Jump | ↑↓/jk: Navigate | Enter: Select | Esc: Back"
-	if m.activeSubPanel == subPanelServices && !m.inSubmenu {
-		leftSection = " s:Start | x:Stop | r:Restart | e:Enable | d:Disable | Esc: Back"
-	} else if m.activeSubPanel == subPanelUsersGroups && !m.inSubmenu {
-		leftSection = " t:Toggle Users/Groups | ↑↓/jk: Navigate | Esc: Back"
+	var leftSection string
+
+	if m.inMainMenu {
+		leftSection = " 1-2: Select Section | ↑↓/jk: Navigate | Enter: Expand"
+	} else if m.inSubmenu {
+		if m.activeSection == sectionSystem {
+			leftSection = " 1-9: Quick Jump | ↑↓/jk: Navigate | Enter: View | Esc: Back"
+		} else {
+			leftSection = " a-h: Quick Jump | ↑↓/jk: Navigate | Enter: View | Esc: Back"
+		}
+	} else {
+		if m.activeSection == sectionSystem && m.activeSystemSub == subSystemServices {
+			leftSection = " s:Start | x:Stop | r:Restart | e:Enable | d:Disable | Esc: Back"
+		} else if m.activeSection == sectionUserManagement && m.activeUserSub == subUserList {
+			leftSection = " t:Toggle Users/Groups | ↑↓/jk: Navigate | Esc: Back"
+		} else {
+			leftSection = " ↑↓/jk: Navigate | Esc: Back to Menu"
+		}
 	}
+
 	leftSection += " | ?: Help | q: Quit "
 
 	rightSection := fmt.Sprintf(" Updated: %s ", m.lastUpdate.Format("15:04:05"))
@@ -413,33 +628,27 @@ func (m Model) renderHelp() string {
 		"",
 		styles.TitleStyle.Render("Navigation"),
 		"",
-		m.renderHelpRow("0-9", "Quick jump to menu item"),
+		m.renderHelpRow("1-2", "Select main section"),
+		m.renderHelpRow("1-9/a-h", "Quick jump to sub-item"),
 		m.renderHelpRow("↑/k", "Move selection up"),
 		m.renderHelpRow("↓/j", "Move selection down"),
-		m.renderHelpRow("Enter", "View selected menu item"),
-		m.renderHelpRow("Esc", "Return to menu"),
-		m.renderHelpRow("t", "Toggle users/groups (in Users panel)"),
+		m.renderHelpRow("Enter", "Expand/View selected item"),
+		m.renderHelpRow("Esc", "Go back to previous menu"),
 		"",
-		styles.TitleStyle.Render("Menu Options"),
+		styles.TitleStyle.Render("Main Sections"),
 		"",
-		styles.SubMenuStyle1.Render(m.renderHelpRow("1", "System Summary (CPU, RAM, uptime)")),
-		styles.SubMenuStyle2.Render(m.renderHelpRow("2", "Hardware Info (lshw/dmidecode)")),
-		styles.SubMenuStyle3.Render(m.renderHelpRow("3", "Mounted Filesystems (df)")),
-		styles.SubMenuStyle4.Render(m.renderHelpRow("4", "Network Interfaces & IPs")),
-		styles.SubMenuStyle5.Render(m.renderHelpRow("5", "Listening Ports")),
-		styles.SubMenuStyle6.Render(m.renderHelpRow("6", "System Logs (journalctl)")),
-		styles.SubMenuStyle7.Render(m.renderHelpRow("7", "Services Management")),
-		styles.SubMenuStyle8.Render(m.renderHelpRow("8", "Process Monitor")),
-		styles.SubMenuStyle9.Render(m.renderHelpRow("9", "Disk Usage")),
-		styles.SubMenuStyle10.Render(m.renderHelpRow("0", "Users & Groups Management")),
+		m.renderHelpRow("1", "System Information"),
+		m.renderHelpRow("2", "User & Group Management"),
 		"",
-		styles.TitleStyle.Render("Service Control (Services Panel - Press 7)"),
+		styles.TitleStyle.Render("Service Control (System → Services)"),
 		"",
 		m.renderHelpRow("s", "Start selected service"),
 		m.renderHelpRow("x", "Stop selected service"),
 		m.renderHelpRow("r", "Restart selected service"),
 		m.renderHelpRow("e", "Enable service (start on boot)"),
 		m.renderHelpRow("d", "Disable service (don't start on boot)"),
+		"",
+		m.renderHelpRow("t", "Toggle users/groups (User Mgmt → List)"),
 		"",
 		styles.HelpStyle.Render("Press ? again to close this help menu"),
 	)
