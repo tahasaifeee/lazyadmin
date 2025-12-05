@@ -25,16 +25,26 @@ The interface features:
 
 ### One-Line Install (Fastest) ⚡
 
-Run this single command to install LazyAdmin directly from GitHub:
+**If you already have Go installed:**
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/tahasaifeee/lazyadmin/main/install.sh | sudo bash
 ```
 
+**If you DON'T have Go installed (installs Go automatically):**
+
+```bash
+curl -sSL https://raw.githubusercontent.com/tahasaifeee/lazyadmin/main/install-with-go.sh | sudo bash
+```
+
 Or if you prefer `wget`:
 
 ```bash
+# With Go already installed
 wget -qO- https://raw.githubusercontent.com/tahasaifeee/lazyadmin/main/install.sh | sudo bash
+
+# Without Go (auto-installs Go)
+wget -qO- https://raw.githubusercontent.com/tahasaifeee/lazyadmin/main/install-with-go.sh | sudo bash
 ```
 
 After installation, you can run `lazyadmin` from anywhere:
