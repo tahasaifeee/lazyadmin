@@ -66,6 +66,26 @@ var (
 				Foreground(warningColor).
 				Bold(true)
 
+	StatusDisabledStyle = lipgloss.NewStyle().
+				Foreground(warningColor).
+				Bold(true)
+
+	StatusEnabledStyle = lipgloss.NewStyle().
+				Foreground(secondaryColor).
+				Bold(true)
+
+	StatusFailedStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#DC2626")).
+				Bold(true)
+
+	StatusInactiveStyle = lipgloss.NewStyle().
+				Foreground(mutedColor).
+				Bold(true)
+
+	StatusMaskedStyle = lipgloss.NewStyle().
+				Foreground(lipgloss.Color("#6366F1")).
+				Bold(true)
+
 	// Status bar style
 	StatusBarStyle = lipgloss.NewStyle().
 			Foreground(textColor).
