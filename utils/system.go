@@ -297,3 +297,189 @@ func FormatBytes(bytes uint64) string {
 	}
 	return fmt.Sprintf("%.1f %ciB", float64(bytes)/float64(div), "KMGTPE"[exp])
 }
+
+// GetHardwareInfo returns detailed hardware information
+func GetHardwareInfo() (string, error) {
+	// Try lshw first (more detailed)
+	cmd := exec.Command("lshw", "-short")
+	output, err := cmd.Output()
+	if err == nil {
+		return string(output), nil
+	}
+
+	// Fallback to dmidecode
+	cmd = exec.Command("dmidecode", "-t", "system,baseboard,processor,memory")
+	output, err = cmd.Output()
+	if err != nil {
+		return "Hardware information unavailable. Please run with sudo or install lshw/dmidecode.", nil
+	}
+	return string(output), nil
+}
+
+// NetworkInterface represents a network interface
+type NetworkInterface struct {
+	Name      string
+	IPAddress string
+	MAC       string
+	Status    string
+}
+
+// GetNetworkInterfaces returns information about network interfaces
+func GetNetworkInterfaces() ([]NetworkInterface, error) {
+	var interfaces []NetworkInterface
+
+	// Get interface list and IPs
+	cmd := exec.Command("ip", "-brief", "addr", "show")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	lines := strings.Split(string(output), "\n")
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+
+		fields := strings.Fields(line)
+		if len(fields) < 3 {
+			continue
+		}
+
+		iface := NetworkInterface{
+			Name:   fields[0],
+			Status: fields[1],
+		}
+
+		// Extract IP address (may be multiple)
+		if len(fields) >= 3 {
+			iface.IPAddress = strings.Join(fields[2:], ", ")
+		}
+
+		// Get MAC address
+		macCmd := exec.Command("cat", fmt.Sprintf("/sys/class/net/%s/address", iface.Name))
+		macOutput, err := macCmd.Output()
+		if err == nil {
+			iface.MAC = strings.TrimSpace(string(macOutput))
+		}
+
+		interfaces = append(interfaces, iface)
+	}
+
+	return interfaces, nil
+}
+
+// PortInfo represents a listening port
+type PortInfo struct {
+	Protocol string
+	Port     string
+	Process  string
+	State    string
+}
+
+// GetListeningPorts returns information about listening ports
+func GetListeningPorts() ([]PortInfo, error) {
+	var ports []PortInfo
+
+	// Use ss command (modern alternative to netstat)
+	cmd := exec.Command("ss", "-tulpn")
+	output, err := cmd.Output()
+	if err != nil {
+		// Fallback to netstat
+		cmd = exec.Command("netstat", "-tulpn")
+		output, err = cmd.Output()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	lines := strings.Split(string(output), "\n")
+	for i, line := range lines {
+		if i == 0 || line == "" {
+			continue // Skip header
+		}
+
+		fields := strings.Fields(line)
+		if len(fields) < 5 {
+			continue
+		}
+
+		port := PortInfo{
+			Protocol: fields[0],
+			State:    fields[1],
+		}
+
+		// Extract port from local address (format: 0.0.0.0:80 or *:80)
+		localAddr := fields[4]
+		if idx := strings.LastIndex(localAddr, ":"); idx != -1 {
+			port.Port = localAddr[idx+1:]
+		}
+
+		// Extract process info if available
+		if len(fields) >= 7 {
+			port.Process = fields[6]
+		}
+
+		ports = append(ports, port)
+	}
+
+	return ports, nil
+}
+
+// GetSystemLogs returns recent system logs from journalctl
+func GetSystemLogs(lines int) (string, error) {
+	cmd := exec.Command("journalctl", "-n", fmt.Sprintf("%d", lines), "--no-pager")
+	output, err := cmd.Output()
+	if err != nil {
+		return "System logs unavailable. Please run with sudo.", nil
+	}
+	return string(output), nil
+}
+
+// FilesystemInfo represents mounted filesystem information
+type FilesystemInfo struct {
+	Device     string
+	MountPoint string
+	FSType     string
+	Size       string
+	Used       string
+	Available  string
+	UsePercent string
+}
+
+// GetFilesystems returns information about mounted filesystems
+func GetFilesystems() ([]FilesystemInfo, error) {
+	var filesystems []FilesystemInfo
+
+	cmd := exec.Command("df", "-h", "-T")
+	output, err := cmd.Output()
+	if err != nil {
+		return nil, err
+	}
+
+	lines := strings.Split(string(output), "\n")
+	for i, line := range lines {
+		if i == 0 || line == "" {
+			continue // Skip header
+		}
+
+		fields := strings.Fields(line)
+		if len(fields) < 7 {
+			continue
+		}
+
+		fs := FilesystemInfo{
+			Device:     fields[0],
+			FSType:     fields[1],
+			Size:       fields[2],
+			Used:       fields[3],
+			Available:  fields[4],
+			UsePercent: fields[5],
+			MountPoint: fields[6],
+		}
+
+		filesystems = append(filesystems, fs)
+	}
+
+	return filesystems, nil
+}
