@@ -23,7 +23,27 @@ The interface features:
 
 ## Installation
 
-### Quick Install (Recommended)
+### One-Line Install (Fastest) ⚡
+
+Run this single command to install LazyAdmin directly from GitHub:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/tahasaifeee/lazyadmin/main/install.sh | sudo bash
+```
+
+Or if you prefer `wget`:
+
+```bash
+wget -qO- https://raw.githubusercontent.com/tahasaifeee/lazyadmin/main/install.sh | sudo bash
+```
+
+After installation, you can run `lazyadmin` from anywhere:
+
+```bash
+lazyadmin
+```
+
+### Quick Install (Alternative)
 
 Clone the repository and run the installation script:
 
@@ -31,12 +51,6 @@ Clone the repository and run the installation script:
 git clone https://github.com/tahasaifeee/lazyadmin.git
 cd lazyadmin
 sudo ./install.sh
-```
-
-After installation, you can run `lazyadmin` from anywhere:
-
-```bash
-lazyadmin
 ```
 
 ### Using Makefile
