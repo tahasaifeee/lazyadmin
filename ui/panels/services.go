@@ -66,6 +66,8 @@ func (p *ServicesPanel) StartService() {
 		p.setStatus("Failed to start service: "+err.Error(), true)
 	} else {
 		p.setStatus("✓ Service started: "+service.Name, false)
+		// Wait a moment for systemd to update before refreshing
+		time.Sleep(300 * time.Millisecond)
 		p.Update() // Refresh service list
 	}
 }
@@ -81,6 +83,8 @@ func (p *ServicesPanel) StopService() {
 		p.setStatus("Failed to stop service: "+err.Error(), true)
 	} else {
 		p.setStatus("✓ Service stopped: "+service.Name, false)
+		// Wait a moment for systemd to update before refreshing
+		time.Sleep(300 * time.Millisecond)
 		p.Update() // Refresh service list
 	}
 }
@@ -96,6 +100,8 @@ func (p *ServicesPanel) RestartService() {
 		p.setStatus("Failed to restart service: "+err.Error(), true)
 	} else {
 		p.setStatus("✓ Service restarted: "+service.Name, false)
+		// Wait a moment for systemd to update before refreshing
+		time.Sleep(300 * time.Millisecond)
 		p.Update() // Refresh service list
 	}
 }
@@ -111,6 +117,8 @@ func (p *ServicesPanel) EnableService() {
 		p.setStatus("Failed to enable service: "+err.Error(), true)
 	} else {
 		p.setStatus("✓ Service enabled: "+service.Name, false)
+		// Wait a moment for systemd to update before refreshing
+		time.Sleep(300 * time.Millisecond)
 		p.Update() // Refresh service list
 	}
 }
@@ -126,6 +134,8 @@ func (p *ServicesPanel) DisableService() {
 		p.setStatus("Failed to disable service: "+err.Error(), true)
 	} else {
 		p.setStatus("✓ Service disabled: "+service.Name, false)
+		// Wait a moment for systemd to update before refreshing
+		time.Sleep(300 * time.Millisecond)
 		p.Update() // Refresh service list
 	}
 }
