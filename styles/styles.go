@@ -121,4 +121,41 @@ var (
 				Foreground(primaryColor).
 				Bold(true).
 				Padding(0, 2)
+
+	// Colorful submenu item styles
+	SubMenuStyle1 = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#10B981")). // Green
+			Padding(0, 2)
+
+	SubMenuStyle2 = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#3B82F6")). // Blue
+			Padding(0, 2)
+
+	SubMenuStyle3 = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#8B5CF6")). // Purple
+			Padding(0, 2)
+
+	SubMenuStyle4 = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#F59E0B")). // Orange
+			Padding(0, 2)
+
+	SubMenuStyle5 = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#EF4444")). // Red
+			Padding(0, 2)
+
+	SubMenuStyle6 = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#06B6D4")). // Cyan
+			Padding(0, 2)
+
+	SubMenuStyle7 = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#EC4899")). // Pink
+			Padding(0, 2)
+
+	SubMenuStyle8 = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#14B8A6")). // Teal
+			Padding(0, 2)
+
+	SubMenuStyle9 = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#F97316")). // Deep Orange
+			Padding(0, 2)
 )
