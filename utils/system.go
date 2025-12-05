@@ -46,9 +46,12 @@ type ProcessInfo struct {
 }
 
 type ServiceInfo struct {
-	Name   string
-	Status string
-	Active bool
+	Name         string
+	Status       string
+	Active       bool
+	Enabled      string
+	LoadState    string
+	SubState     string
 }
 
 func GetSystemInfo() (*SystemInfo, error) {
@@ -151,10 +154,10 @@ func GetProcesses() ([]ProcessInfo, error) {
 }
 
 func GetServices() ([]ServiceInfo, error) {
-	var services []ServiceInfo
+	serviceMap := make(map[string]*ServiceInfo)
 
-	// Get list of systemd services
-	cmd := exec.Command("systemctl", "list-units", "--type=service", "--all", "--no-pager", "--no-legend")
+	// First, get all unit files (this includes disabled services)
+	cmd := exec.Command("systemctl", "list-unit-files", "--type=service", "--no-pager", "--no-legend")
 	output, err := cmd.Output()
 	if err != nil {
 		return nil, err
@@ -167,19 +170,86 @@ func GetServices() ([]ServiceInfo, error) {
 		}
 
 		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			continue
+		}
+
+		name := fields[0]
+		enabledState := fields[1]
+
+		// Filter out services with "not-found" or similar issues
+		if strings.Contains(enabledState, "not-found") || strings.Contains(name, "not-found") {
+			continue
+		}
+
+		serviceMap[name] = &ServiceInfo{
+			Name:    name,
+			Enabled: enabledState,
+			Status:  "inactive",
+			Active:  false,
+		}
+	}
+
+	// Now get the runtime state of all services
+	cmd = exec.Command("systemctl", "list-units", "--type=service", "--all", "--no-pager", "--no-legend")
+	output, err = cmd.Output()
+	if err != nil {
+		// Continue with what we have
+		goto returnServices
+	}
+
+	lines = strings.Split(string(output), "\n")
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+
+		fields := strings.Fields(line)
 		if len(fields) < 4 {
 			continue
 		}
 
 		name := fields[0]
-		status := fields[2]
-		active := status == "active"
+		loadState := fields[1]
+		activeState := fields[2]
+		subState := fields[3]
 
-		services = append(services, ServiceInfo{
-			Name:   name,
-			Status: status,
-			Active: active,
-		})
+		// Filter out not-found services
+		if strings.Contains(loadState, "not-found") || strings.Contains(activeState, "not-found") {
+			delete(serviceMap, name)
+			continue
+		}
+
+		// Update or create service info
+		if svc, exists := serviceMap[name]; exists {
+			svc.LoadState = loadState
+			svc.Status = activeState
+			svc.SubState = subState
+			svc.Active = activeState == "active"
+		} else {
+			// Service is loaded but not in unit-files list (rare case)
+			serviceMap[name] = &ServiceInfo{
+				Name:      name,
+				LoadState: loadState,
+				Status:    activeState,
+				SubState:  subState,
+				Active:    activeState == "active",
+				Enabled:   "unknown",
+			}
+		}
+	}
+
+returnServices:
+	// Convert map to slice
+	var services []ServiceInfo
+	for _, svc := range serviceMap {
+		// Final filter for not-found
+		if strings.Contains(svc.Name, "not-found") ||
+		   strings.Contains(svc.Status, "not-found") ||
+		   strings.Contains(svc.LoadState, "not-found") {
+			continue
+		}
+		services = append(services, *svc)
 	}
 
 	return services, nil

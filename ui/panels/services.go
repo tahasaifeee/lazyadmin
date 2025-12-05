@@ -226,27 +226,72 @@ func (p *ServicesPanel) Render(width, height int, active bool) string {
 }
 
 func (p *ServicesPanel) renderService(service utils.ServiceInfo, selected bool) string {
-	// Status indicator
+	// Choose color and icon based on service state
 	var statusStyle lipgloss.Style
+	var enabledStyle lipgloss.Style
 	var statusIcon string
-	if service.Active {
+	var statusText string
+
+	// Determine active/inactive status style
+	switch service.Status {
+	case "active":
 		statusStyle = styles.StatusRunningStyle
 		statusIcon = "●"
-	} else {
-		statusStyle = styles.StatusStoppedStyle
+		statusText = "active"
+	case "failed":
+		statusStyle = styles.StatusFailedStyle
+		statusIcon = "✗"
+		statusText = "failed"
+	case "inactive":
+		statusStyle = styles.StatusInactiveStyle
 		statusIcon = "○"
+		statusText = "inactive"
+	case "activating":
+		statusStyle = styles.StatusWarningStyle
+		statusIcon = "◐"
+		statusText = "starting"
+	case "deactivating":
+		statusStyle = styles.StatusWarningStyle
+		statusIcon = "◑"
+		statusText = "stopping"
+	default:
+		statusStyle = styles.StatusInactiveStyle
+		statusIcon = "○"
+		statusText = service.Status
+	}
+
+	// Determine enabled/disabled status style
+	var enabledText string
+	switch service.Enabled {
+	case "enabled":
+		enabledStyle = styles.StatusEnabledStyle
+		enabledText = "enabled"
+	case "disabled":
+		enabledStyle = styles.StatusDisabledStyle
+		enabledText = "disabled"
+	case "static":
+		enabledStyle = styles.StatusInactiveStyle
+		enabledText = "static"
+	case "masked":
+		enabledStyle = styles.StatusMaskedStyle
+		enabledText = "masked"
+	default:
+		enabledStyle = styles.StatusInactiveStyle
+		enabledText = service.Enabled
 	}
 
 	// Service name (truncate if too long)
 	name := service.Name
-	if len(name) > 40 {
-		name = name[:37] + "..."
+	if len(name) > 35 {
+		name = name[:32] + "..."
 	}
 
-	itemText := fmt.Sprintf("%s %-40s %s",
+	// Build colorful item text with both status and enabled state
+	itemText := fmt.Sprintf("%s %-35s %s %s",
 		statusStyle.Render(statusIcon),
 		name,
-		statusStyle.Render(service.Status),
+		statusStyle.Render(fmt.Sprintf("%-10s", statusText)),
+		enabledStyle.Render(fmt.Sprintf("[%s]", enabledText)),
 	)
 
 	if selected {
