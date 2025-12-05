@@ -158,4 +158,8 @@ var (
 	SubMenuStyle9 = lipgloss.NewStyle().
 			Foreground(lipgloss.Color("#F97316")). // Deep Orange
 			Padding(0, 2)
+
+	SubMenuStyle10 = lipgloss.NewStyle().
+			Foreground(lipgloss.Color("#A855F7")). // Vivid Purple
+			Padding(0, 2)
 )

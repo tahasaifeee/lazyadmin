@@ -594,3 +594,161 @@ func GetFilesystems() ([]FilesystemInfo, error) {
 
 	return filesystems, nil
 }
+
+// UserInfo represents user account information
+type UserInfo struct {
+	Username string
+	UID      string
+	GID      string
+	Home     string
+	Shell    string
+	Status   string // locked/unlocked
+}
+
+// GroupInfo represents group information
+type GroupInfo struct {
+	Name    string
+	GID     string
+	Members string
+}
+
+// GetUsers returns list of all users from /etc/passwd
+func GetUsers() ([]UserInfo, error) {
+	var users []UserInfo
+
+	data, err := os.ReadFile("/etc/passwd")
+	if err != nil {
+		return nil, err
+	}
+
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+
+		fields := strings.Split(line, ":")
+		if len(fields) < 7 {
+			continue
+		}
+
+		// Check if user is locked (from /etc/shadow if readable)
+		status := "unlocked"
+		shadowCmd := exec.Command("passwd", "-S", fields[0])
+		shadowOutput, err := shadowCmd.Output()
+		if err == nil {
+			if strings.Contains(string(shadowOutput), "L ") {
+				status = "locked"
+			}
+		}
+
+		users = append(users, UserInfo{
+			Username: fields[0],
+			UID:      fields[2],
+			GID:      fields[3],
+			Home:     fields[5],
+			Shell:    fields[6],
+			Status:   status,
+		})
+	}
+
+	return users, nil
+}
+
+// GetGroups returns list of all groups from /etc/group
+func GetGroups() ([]GroupInfo, error) {
+	var groups []GroupInfo
+
+	data, err := os.ReadFile("/etc/group")
+	if err != nil {
+		return nil, err
+	}
+
+	lines := strings.Split(string(data), "\n")
+	for _, line := range lines {
+		if line == "" {
+			continue
+		}
+
+		fields := strings.Split(line, ":")
+		if len(fields) < 4 {
+			continue
+		}
+
+		groups = append(groups, GroupInfo{
+			Name:    fields[0],
+			GID:     fields[2],
+			Members: fields[3],
+		})
+	}
+
+	return groups, nil
+}
+
+// CreateUser creates a new user account
+func CreateUser(username, password string) error {
+	// Create user
+	cmd := exec.Command("useradd", "-m", username)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to create user: %w", err)
+	}
+
+	// Set password if provided
+	if password != "" {
+		cmd = exec.Command("chpasswd")
+		cmd.Stdin = strings.NewReader(fmt.Sprintf("%s:%s", username, password))
+		if err := cmd.Run(); err != nil {
+			return fmt.Errorf("failed to set password: %w", err)
+		}
+	}
+
+	return nil
+}
+
+// DeleteUser deletes a user account
+func DeleteUser(username string, removeHome bool) error {
+	args := []string{username}
+	if removeHome {
+		args = append([]string{"-r"}, args...)
+	}
+
+	cmd := exec.Command("userdel", args...)
+	return cmd.Run()
+}
+
+// AddUserToGroup adds a user to a group
+func AddUserToGroup(username, groupname string) error {
+	cmd := exec.Command("usermod", "-aG", groupname, username)
+	return cmd.Run()
+}
+
+// RemoveUserFromGroup removes a user from a group
+func RemoveUserFromGroup(username, groupname string) error {
+	cmd := exec.Command("gpasswd", "-d", username, groupname)
+	return cmd.Run()
+}
+
+// SetUserPassword sets or resets a user's password
+func SetUserPassword(username, password string) error {
+	cmd := exec.Command("chpasswd")
+	cmd.Stdin = strings.NewReader(fmt.Sprintf("%s:%s", username, password))
+	return cmd.Run()
+}
+
+// ChangeUserShell changes a user's login shell
+func ChangeUserShell(username, shell string) error {
+	cmd := exec.Command("chsh", "-s", shell, username)
+	return cmd.Run()
+}
+
+// LockUserAccount locks a user account
+func LockUserAccount(username string) error {
+	cmd := exec.Command("passwd", "-l", username)
+	return cmd.Run()
+}
+
+// UnlockUserAccount unlocks a user account
+func UnlockUserAccount(username string) error {
+	cmd := exec.Command("passwd", "-u", username)
+	return cmd.Run()
+}
