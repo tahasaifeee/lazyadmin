@@ -23,13 +23,41 @@ The interface features:
 
 ## Installation
 
-### From Source
+### Quick Install (Recommended)
+
+Clone the repository and run the installation script:
+
+```bash
+git clone https://github.com/tahasaifeee/lazyadmin.git
+cd lazyadmin
+sudo ./install.sh
+```
+
+After installation, you can run `lazyadmin` from anywhere:
+
+```bash
+lazyadmin
+```
+
+### Using Makefile
+
+Alternatively, you can use the Makefile:
+
+```bash
+git clone https://github.com/tahasaifeee/lazyadmin.git
+cd lazyadmin
+sudo make install
+```
+
+### Manual Installation
+
+If you prefer to install manually:
 
 ```bash
 git clone https://github.com/tahasaifeee/lazyadmin.git
 cd lazyadmin
 go build -o lazyadmin
-sudo ./lazyadmin
+sudo install -m 755 lazyadmin /usr/local/bin/lazyadmin
 ```
 
 ### Requirements
@@ -39,10 +67,59 @@ sudo ./lazyadmin
 - systemd (for services panel)
 - Root privileges recommended for full functionality
 
-## Usage
+## Updating LazyAdmin
+
+To update to the latest version:
 
 ```bash
-sudo ./lazyadmin
+cd lazyadmin
+sudo make update
+```
+
+Or simply run the install script again:
+
+```bash
+cd lazyadmin
+git pull
+sudo ./install.sh
+```
+
+## Uninstalling
+
+To remove LazyAdmin from your system:
+
+```bash
+sudo make uninstall
+```
+
+Or manually:
+
+```bash
+sudo rm /usr/local/bin/lazyadmin
+```
+
+## Usage
+
+Once installed, simply run:
+
+```bash
+lazyadmin
+```
+
+Or run with sudo for full access to system information:
+
+```bash
+sudo lazyadmin
+```
+
+### Command Line Options
+
+```bash
+lazyadmin [options]
+
+Options:
+  -v, --version    Print version information
+  -h, --help       Show help message
 ```
 
 ### Keyboard Shortcuts
