@@ -185,6 +185,36 @@ func GetServices() ([]ServiceInfo, error) {
 	return services, nil
 }
 
+// StartService starts a systemd service
+func StartService(serviceName string) error {
+	cmd := exec.Command("systemctl", "start", serviceName)
+	return cmd.Run()
+}
+
+// StopService stops a systemd service
+func StopService(serviceName string) error {
+	cmd := exec.Command("systemctl", "stop", serviceName)
+	return cmd.Run()
+}
+
+// RestartService restarts a systemd service
+func RestartService(serviceName string) error {
+	cmd := exec.Command("systemctl", "restart", serviceName)
+	return cmd.Run()
+}
+
+// EnableService enables a systemd service to start on boot
+func EnableService(serviceName string) error {
+	cmd := exec.Command("systemctl", "enable", serviceName)
+	return cmd.Run()
+}
+
+// DisableService disables a systemd service from starting on boot
+func DisableService(serviceName string) error {
+	cmd := exec.Command("systemctl", "disable", serviceName)
+	return cmd.Run()
+}
+
 func FormatBytes(bytes uint64) string {
 	const unit = 1024
 	if bytes < unit {

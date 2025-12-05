@@ -5,12 +5,16 @@ A beautiful terminal UI (TUI) for Linux system administration, built with Go, Bu
 ## Features
 
 - **System Information Panel**: View real-time system metrics including CPU usage, memory usage, uptime, and OS details
-- **Services Panel**: Browse and monitor systemd services with their current status
+- **Services Panel**: Browse, monitor, and **control** systemd services
+  - Start, stop, and restart services
+  - Enable/disable services for boot
+  - Real-time status feedback
 - **Processes Panel**: View running processes sorted by CPU usage with detailed statistics
 - **Disk Usage Panel**: Monitor disk usage across all mount points with visual progress bars
 - **Beautiful UI**: Styled with Lip Gloss for a modern, colorful terminal experience
 - **Keyboard Navigation**: Vim-style keybindings (hjkl) and arrow keys
 - **Real-time Updates**: Data refreshes automatically every 2 seconds
+- **Service Management**: Full control over systemd services with intuitive keyboard shortcuts
 
 ## Screenshots
 
@@ -158,6 +162,13 @@ Options:
 - `↑`/`k`: Move selection up (in lists)
 - `↓`/`j`: Move selection down (in lists)
 
+#### Service Control (Services Panel Only)
+- `s`: Start selected service
+- `x`: Stop selected service
+- `r`: Restart selected service
+- `e`: Enable service (start on boot)
+- `d`: Disable service (don't start on boot)
+
 ### Panels
 
 #### 1. System Information (⚙)
@@ -173,6 +184,13 @@ Shows all systemd services with:
 - Current status (active/inactive)
 - Visual status indicators (● for running, ○ for stopped)
 - Scrollable list with selection
+- **Service control actions:**
+  - `s` - Start service
+  - `x` - Stop service
+  - `r` - Restart service
+  - `e` - Enable service (start on boot)
+  - `d` - Disable service (don't start on boot)
+- Real-time status feedback for all operations
 
 #### 3. Processes (⚡)
 Displays top 100 processes by CPU usage:

@@ -108,6 +108,28 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			case panelDisk:
 				m.diskPanel.MoveDown()
 			}
+
+		// Service control actions (only for services panel)
+		case "s":
+			if m.activePanel == panelServices {
+				m.servicesPanel.StartService()
+			}
+		case "x":
+			if m.activePanel == panelServices {
+				m.servicesPanel.StopService()
+			}
+		case "r":
+			if m.activePanel == panelServices {
+				m.servicesPanel.RestartService()
+			}
+		case "e":
+			if m.activePanel == panelServices {
+				m.servicesPanel.EnableService()
+			}
+		case "d":
+			if m.activePanel == panelServices {
+				m.servicesPanel.DisableService()
+			}
 		}
 
 	case tea.WindowSizeMsg:
@@ -165,11 +187,11 @@ func (m Model) renderPanels() string {
 	// Calculate dimensions
 	contentHeight := m.height - 4 // subtract header and status bar
 
-	// Left column (menu)
-	menuWidth := 25
+	// Left column (menu) - made wider for better display
+	menuWidth := 30
 	menu := m.renderMenu(menuWidth, contentHeight)
 
-	// Right column (panels)
+	// Right column (panels) - give more space to the main panel
 	panelWidth := m.width - menuWidth - 2
 
 	var activePanel string
@@ -264,6 +286,14 @@ func (m Model) renderHelp() string {
 		m.renderHelpRow("Services", "View and manage systemd services"),
 		m.renderHelpRow("Processes", "View running processes"),
 		m.renderHelpRow("Disk Usage", "View disk usage and mount points"),
+		"",
+		styles.TitleStyle.Render("Service Control (Services Panel)"),
+		"",
+		m.renderHelpRow("s", "Start selected service"),
+		m.renderHelpRow("x", "Stop selected service"),
+		m.renderHelpRow("r", "Restart selected service"),
+		m.renderHelpRow("e", "Enable service (start on boot)"),
+		m.renderHelpRow("d", "Disable service (don't start on boot)"),
 		"",
 		styles.HelpStyle.Render("Press ? again to close this help menu"),
 	)
