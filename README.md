@@ -97,14 +97,30 @@ sudo install -m 755 lazyadmin /usr/local/bin/lazyadmin
 
 ## Updating LazyAdmin
 
-To update to the latest version:
+### One-Line Update (Fastest) ⚡
+
+Update to the latest version with a single command:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/tahasaifeee/lazyadmin/main/update.sh | sudo bash
+```
+
+Or with `wget`:
+
+```bash
+wget -qO- https://raw.githubusercontent.com/tahasaifeee/lazyadmin/main/update.sh | sudo bash
+```
+
+### Alternative Update Methods
+
+**If you cloned the repository:**
 
 ```bash
 cd lazyadmin
 sudo make update
 ```
 
-Or simply run the install script again:
+Or manually:
 
 ```bash
 cd lazyadmin
