@@ -3,6 +3,7 @@ package panels
 import (
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/charmbracelet/lipgloss"
 	"github.com/tahasaifeee/lazyadmin/styles"
@@ -10,9 +11,12 @@ import (
 )
 
 type ServicesPanel struct {
-	services      []utils.ServiceInfo
-	selectedIndex int
-	scrollOffset  int
+	services       []utils.ServiceInfo
+	selectedIndex  int
+	scrollOffset   int
+	statusMessage  string
+	statusTime     time.Time
+	statusIsError  bool
 }
 
 func NewServicesPanel() *ServicesPanel {
@@ -44,6 +48,101 @@ func (p *ServicesPanel) MoveDown() {
 	}
 }
 
+func (p *ServicesPanel) GetSelectedService() *utils.ServiceInfo {
+	if len(p.services) == 0 || p.selectedIndex >= len(p.services) {
+		return nil
+	}
+	return &p.services[p.selectedIndex]
+}
+
+func (p *ServicesPanel) StartService() {
+	service := p.GetSelectedService()
+	if service == nil {
+		return
+	}
+
+	err := utils.StartService(service.Name)
+	if err != nil {
+		p.setStatus("Failed to start service: "+err.Error(), true)
+	} else {
+		p.setStatus("✓ Service started: "+service.Name, false)
+		p.Update() // Refresh service list
+	}
+}
+
+func (p *ServicesPanel) StopService() {
+	service := p.GetSelectedService()
+	if service == nil {
+		return
+	}
+
+	err := utils.StopService(service.Name)
+	if err != nil {
+		p.setStatus("Failed to stop service: "+err.Error(), true)
+	} else {
+		p.setStatus("✓ Service stopped: "+service.Name, false)
+		p.Update() // Refresh service list
+	}
+}
+
+func (p *ServicesPanel) RestartService() {
+	service := p.GetSelectedService()
+	if service == nil {
+		return
+	}
+
+	err := utils.RestartService(service.Name)
+	if err != nil {
+		p.setStatus("Failed to restart service: "+err.Error(), true)
+	} else {
+		p.setStatus("✓ Service restarted: "+service.Name, false)
+		p.Update() // Refresh service list
+	}
+}
+
+func (p *ServicesPanel) EnableService() {
+	service := p.GetSelectedService()
+	if service == nil {
+		return
+	}
+
+	err := utils.EnableService(service.Name)
+	if err != nil {
+		p.setStatus("Failed to enable service: "+err.Error(), true)
+	} else {
+		p.setStatus("✓ Service enabled: "+service.Name, false)
+		p.Update() // Refresh service list
+	}
+}
+
+func (p *ServicesPanel) DisableService() {
+	service := p.GetSelectedService()
+	if service == nil {
+		return
+	}
+
+	err := utils.DisableService(service.Name)
+	if err != nil {
+		p.setStatus("Failed to disable service: "+err.Error(), true)
+	} else {
+		p.setStatus("✓ Service disabled: "+service.Name, false)
+		p.Update() // Refresh service list
+	}
+}
+
+func (p *ServicesPanel) setStatus(message string, isError bool) {
+	p.statusMessage = message
+	p.statusTime = time.Now()
+	p.statusIsError = isError
+}
+
+func (p *ServicesPanel) ClearOldStatus() {
+	// Clear status message after 5 seconds
+	if p.statusMessage != "" && time.Since(p.statusTime) > 5*time.Second {
+		p.statusMessage = ""
+	}
+}
+
 func (p *ServicesPanel) Render(width, height int, active bool) string {
 	style := styles.PanelStyle
 	titleStyle := styles.TitleStyle
@@ -68,6 +167,9 @@ func (p *ServicesPanel) Render(width, height int, active bool) string {
 		p.scrollOffset = p.selectedIndex - visibleLines + 1
 	}
 
+	// Clear old status messages
+	p.ClearOldStatus()
+
 	// Render header
 	header := titleStyle.Render("🔧 Services") + "\n\n"
 	header += styles.HelpStyle.Render(fmt.Sprintf("Total: %d services", len(p.services)))
@@ -85,11 +187,26 @@ func (p *ServicesPanel) Render(width, height int, active bool) string {
 		items = append(items, itemStr)
 	}
 
+	// Render keyboard shortcuts
+	shortcuts := "\n" + styles.HelpStyle.Render("s:Start | x:Stop | r:Restart | e:Enable | d:Disable")
+
+	// Render status message if present
+	statusLine := ""
+	if p.statusMessage != "" {
+		statusStyle := styles.StatusRunningStyle
+		if p.statusIsError {
+			statusStyle = styles.StatusStoppedStyle
+		}
+		statusLine = "\n" + statusStyle.Render(p.statusMessage)
+	}
+
 	content := lipgloss.JoinVertical(
 		lipgloss.Left,
 		header,
 		"",
 		strings.Join(items, "\n"),
+		shortcuts,
+		statusLine,
 	)
 
 	return style.
