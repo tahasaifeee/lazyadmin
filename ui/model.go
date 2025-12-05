@@ -20,12 +20,7 @@ const (
 )
 
 const (
-	subSystemSummary systemSubPanel = iota
-	subSystemHardware
-	subSystemFilesystems
-	subSystemNetwork
-	subSystemPorts
-	subSystemLogs
+	subSystemInfo systemSubPanel = iota
 	subSystemServices
 	subSystemProcesses
 	subSystemDisk
@@ -47,16 +42,11 @@ type Model struct {
 	height int
 
 	// All panels
-	systemSummaryPanel   *panels.SystemSummaryPanel
-	hardwareInfoPanel    *panels.HardwareInfoPanel
-	filesystemsInfoPanel *panels.FilesystemsInfoPanel
-	networkInfoPanel     *panels.NetworkInfoPanel
-	portsInfoPanel       *panels.PortsInfoPanel
-	systemLogsPanel      *panels.SystemLogsPanel
-	servicesPanel        *panels.ServicesPanel
-	processesPanel       *panels.ProcessesPanel
-	diskPanel            *panels.DiskPanel
-	usersGroupsPanel     *panels.UsersGroupsPanel
+	systemSummaryPanel *panels.SystemSummaryPanel
+	servicesPanel      *panels.ServicesPanel
+	processesPanel     *panels.ProcessesPanel
+	diskPanel          *panels.DiskPanel
+	usersGroupsPanel   *panels.UsersGroupsPanel
 
 	// Navigation
 	activeSection   mainSection
@@ -74,19 +64,14 @@ type tickMsg time.Time
 
 func NewModel() Model {
 	return Model{
-		systemSummaryPanel:   panels.NewSystemSummaryPanel(),
-		hardwareInfoPanel:    panels.NewHardwareInfoPanel(),
-		filesystemsInfoPanel: panels.NewFilesystemsInfoPanel(),
-		networkInfoPanel:     panels.NewNetworkInfoPanel(),
-		portsInfoPanel:       panels.NewPortsInfoPanel(),
-		systemLogsPanel:      panels.NewSystemLogsPanel(),
-		servicesPanel:        panels.NewServicesPanel(),
-		processesPanel:       panels.NewProcessesPanel(),
-		diskPanel:            panels.NewDiskPanel(),
-		usersGroupsPanel:     panels.NewUsersGroupsPanel(),
+		systemSummaryPanel: panels.NewSystemSummaryPanel(),
+		servicesPanel:      panels.NewServicesPanel(),
+		processesPanel:     panels.NewProcessesPanel(),
+		diskPanel:          panels.NewDiskPanel(),
+		usersGroupsPanel:   panels.NewUsersGroupsPanel(),
 
 		activeSection:   sectionSystem,
-		activeSystemSub: subSystemSummary,
+		activeSystemSub: subSystemInfo,
 		activeUserSub:   subUserList,
 		inMainMenu:      true,
 		inSubmenu:       true,
@@ -137,11 +122,10 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.activeSection = sectionSystem
 				m.inMainMenu = false
 				m.inSubmenu = true
-				m.activeSystemSub = subSystemSummary
+				m.activeSystemSub = subSystemInfo
 			} else if m.activeSection == sectionSystem && m.inSubmenu {
 				// Quick jump to sub-option 1
-				m.activeSystemSub = subSystemSummary
-				m.inSubmenu = false
+				m.activeSystemSub = subSystemInfo
 			}
 
 		case "2":
@@ -151,45 +135,17 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				m.inSubmenu = true
 				m.activeUserSub = subUserList
 			} else if m.activeSection == sectionSystem && m.inSubmenu {
-				m.activeSystemSub = subSystemHardware
-				m.inSubmenu = false
+				m.activeSystemSub = subSystemServices
 			}
 
 		// System Information sub-options (when in System section submenu)
 		case "3":
 			if m.activeSection == sectionSystem && m.inSubmenu {
-				m.activeSystemSub = subSystemFilesystems
-				m.inSubmenu = false
+				m.activeSystemSub = subSystemProcesses
 			}
 		case "4":
 			if m.activeSection == sectionSystem && m.inSubmenu {
-				m.activeSystemSub = subSystemNetwork
-				m.inSubmenu = false
-			}
-		case "5":
-			if m.activeSection == sectionSystem && m.inSubmenu {
-				m.activeSystemSub = subSystemPorts
-				m.inSubmenu = false
-			}
-		case "6":
-			if m.activeSection == sectionSystem && m.inSubmenu {
-				m.activeSystemSub = subSystemLogs
-				m.inSubmenu = false
-			}
-		case "7":
-			if m.activeSection == sectionSystem && m.inSubmenu {
-				m.activeSystemSub = subSystemServices
-				m.inSubmenu = false
-			}
-		case "8":
-			if m.activeSection == sectionSystem && m.inSubmenu {
-				m.activeSystemSub = subSystemProcesses
-				m.inSubmenu = false
-			}
-		case "9":
-			if m.activeSection == sectionSystem && m.inSubmenu {
 				m.activeSystemSub = subSystemDisk
-				m.inSubmenu = false
 			}
 
 		// User Management sub-options (when in User Management section submenu)
@@ -263,14 +219,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Navigate content
 				if m.activeSection == sectionSystem {
 					switch m.activeSystemSub {
-					case subSystemHardware:
-						m.hardwareInfoPanel.MoveUp()
-					case subSystemFilesystems:
-						m.filesystemsInfoPanel.MoveUp()
-					case subSystemPorts:
-						m.portsInfoPanel.MoveUp()
-					case subSystemLogs:
-						m.systemLogsPanel.MoveUp()
 					case subSystemServices:
 						m.servicesPanel.MoveUp()
 					case subSystemProcesses:
@@ -306,14 +254,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 				// Navigate content
 				if m.activeSection == sectionSystem {
 					switch m.activeSystemSub {
-					case subSystemHardware:
-						m.hardwareInfoPanel.MoveDown()
-					case subSystemFilesystems:
-						m.filesystemsInfoPanel.MoveDown()
-					case subSystemPorts:
-						m.portsInfoPanel.MoveDown()
-					case subSystemLogs:
-						m.systemLogsPanel.MoveDown()
 					case subSystemServices:
 						m.servicesPanel.MoveDown()
 					case subSystemProcesses:
@@ -376,11 +316,6 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 	case tickMsg:
 		// Update data every 2 seconds
 		m.systemSummaryPanel.Update()
-		m.hardwareInfoPanel.Update()
-		m.filesystemsInfoPanel.Update()
-		m.networkInfoPanel.Update()
-		m.portsInfoPanel.Update()
-		m.systemLogsPanel.Update()
 		m.servicesPanel.Update()
 		m.processesPanel.Update()
 		m.diskPanel.Update()
@@ -433,18 +368,8 @@ func (m Model) renderPanels() string {
 	var activePanel string
 	if m.activeSection == sectionSystem {
 		switch m.activeSystemSub {
-		case subSystemSummary:
+		case subSystemInfo:
 			activePanel = m.systemSummaryPanel.Render(panelWidth, contentHeight, !m.inSubmenu && !m.inMainMenu)
-		case subSystemHardware:
-			activePanel = m.hardwareInfoPanel.Render(panelWidth, contentHeight, !m.inSubmenu && !m.inMainMenu)
-		case subSystemFilesystems:
-			activePanel = m.filesystemsInfoPanel.Render(panelWidth, contentHeight, !m.inSubmenu && !m.inMainMenu)
-		case subSystemNetwork:
-			activePanel = m.networkInfoPanel.Render(panelWidth, contentHeight, !m.inSubmenu && !m.inMainMenu)
-		case subSystemPorts:
-			activePanel = m.portsInfoPanel.Render(panelWidth, contentHeight, !m.inSubmenu && !m.inMainMenu)
-		case subSystemLogs:
-			activePanel = m.systemLogsPanel.Render(panelWidth, contentHeight, !m.inSubmenu && !m.inMainMenu)
 		case subSystemServices:
 			activePanel = m.servicesPanel.Render(panelWidth, contentHeight, !m.inSubmenu && !m.inMainMenu)
 		case subSystemProcesses:
@@ -508,15 +433,10 @@ func (m Model) renderMenu(width, height int) string {
 				sub   systemSubPanel
 				style lipgloss.Style
 			}{
-				{"1", "System Summary", subSystemSummary, styles.SubMenuStyle1},
-				{"2", "Hardware Info", subSystemHardware, styles.SubMenuStyle2},
-				{"3", "Filesystems", subSystemFilesystems, styles.SubMenuStyle3},
-				{"4", "Network Interfaces", subSystemNetwork, styles.SubMenuStyle4},
-				{"5", "Listening Ports", subSystemPorts, styles.SubMenuStyle5},
-				{"6", "System Logs", subSystemLogs, styles.SubMenuStyle6},
-				{"7", "Services", subSystemServices, styles.SubMenuStyle7},
-				{"8", "Processes", subSystemProcesses, styles.SubMenuStyle8},
-				{"9", "Disk Usage", subSystemDisk, styles.SubMenuStyle9},
+				{"1", "System Info", subSystemInfo, styles.SubMenuStyle1},
+				{"2", "Services", subSystemServices, styles.SubMenuStyle2},
+				{"3", "Processes", subSystemProcesses, styles.SubMenuStyle3},
+				{"4", "Disk Usage", subSystemDisk, styles.SubMenuStyle4},
 			}
 
 			for _, item := range systemItems {
@@ -590,7 +510,7 @@ func (m Model) renderStatusBar() string {
 		leftSection = " 1-2: Select Section | ↑↓/jk: Navigate | Enter: Expand"
 	} else if m.inSubmenu {
 		if m.activeSection == sectionSystem {
-			leftSection = " 1-9: Quick Jump | ↑↓/jk: Navigate | Enter: View | Esc: Back"
+			leftSection = " 1-4: Quick Jump | ↑↓/jk: Navigate | Enter: View | Esc: Back"
 		} else {
 			leftSection = " a-h: Quick Jump | ↑↓/jk: Navigate | Enter: View | Esc: Back"
 		}
@@ -629,7 +549,7 @@ func (m Model) renderHelp() string {
 		styles.TitleStyle.Render("Navigation"),
 		"",
 		m.renderHelpRow("1-2", "Select main section"),
-		m.renderHelpRow("1-9/a-h", "Quick jump to sub-item"),
+		m.renderHelpRow("1-4/a-h", "Quick jump to sub-item"),
 		m.renderHelpRow("↑/k", "Move selection up"),
 		m.renderHelpRow("↓/j", "Move selection down"),
 		m.renderHelpRow("Enter", "Expand/View selected item"),
