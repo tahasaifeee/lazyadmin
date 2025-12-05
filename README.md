@@ -5,13 +5,15 @@ A beautiful terminal UI (TUI) for Linux system administration, built with Go, Bu
 ## Features
 
 - **System Information Panel**: View real-time system metrics including CPU usage, memory usage, uptime, and OS details
-- **Services Panel**: Browse, monitor, and **control** systemd services
+- **Services Panel**: Browse, monitor, and **control** ALL systemd services
+  - View all services (active, inactive, enabled, disabled)
   - Start, stop, and restart services
   - Enable/disable services for boot
+  - Colorful status indicators for different service states
   - Real-time status feedback
 - **Processes Panel**: View running processes sorted by CPU usage with detailed statistics
 - **Disk Usage Panel**: Monitor disk usage across all mount points with visual progress bars
-- **Beautiful UI**: Styled with Lip Gloss for a modern, colorful terminal experience
+- **Beautiful UI**: Styled with Lip Gloss for a modern, colorful terminal experience with vibrant color-coded indicators
 - **Keyboard Navigation**: Vim-style keybindings (hjkl) and arrow keys
 - **Real-time Updates**: Data refreshes automatically every 2 seconds
 - **Service Management**: Full control over systemd services with intuitive keyboard shortcuts
@@ -20,7 +22,9 @@ A beautiful terminal UI (TUI) for Linux system administration, built with Go, Bu
 
 The interface features:
 - Split-panel layout with a sidebar menu and main content area
-- Color-coded status indicators (green for running, red for stopped)
+- Vibrant color-coded status indicators:
+  - Services: Green (active), Red (failed), Gray (inactive), Orange (disabled), Blue (enabled), Purple (masked)
+  - Visual icons: ● (running), ✗ (failed), ○ (inactive/stopped)
 - Progress bars for CPU, memory, and disk usage
 - Interactive help menu
 - Status bar with keyboard shortcuts
@@ -195,10 +199,21 @@ Displays:
 - Memory Total, Used, and Usage percentage (with progress bar)
 
 #### 2. Services (🔧)
-Shows all systemd services with:
+Shows **ALL** systemd services (active, inactive, enabled, disabled) with:
 - Service name
-- Current status (active/inactive)
-- Visual status indicators (● for running, ○ for stopped)
+- Runtime status (active/inactive/failed/starting/stopping)
+- Boot status (enabled/disabled/static/masked)
+- **Colorful visual indicators:**
+  - **Runtime Status:**
+    - 🟢 Green `●` - Active/Running services
+    - 🔴 Red `✗` - Failed services
+    - ⚪ Gray `○` - Inactive services
+    - 🟠 Orange `◐/◑` - Starting/Stopping services
+  - **Boot Status:**
+    - 🔵 Blue `[enabled]` - Starts on boot
+    - 🟠 Orange `[disabled]` - Won't start on boot
+    - ⚪ Gray `[static]` - Static services
+    - 🟣 Purple `[masked]` - Masked services
 - Scrollable list with selection
 - **Service control actions:**
   - `s` - Start service
@@ -207,6 +222,7 @@ Shows all systemd services with:
   - `e` - Enable service (start on boot)
   - `d` - Disable service (don't start on boot)
 - Real-time status feedback for all operations
+- Services remain visible even when disabled (no longer disappear from the list)
 
 #### 3. Processes (⚡)
 Displays top 100 processes by CPU usage:
