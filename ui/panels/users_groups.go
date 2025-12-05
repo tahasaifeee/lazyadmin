@@ -87,15 +87,27 @@ func (p *UsersGroupsPanel) Render(width, height int, active bool) string {
 	var items []string
 
 	if p.viewMode == "users" {
-		header = titleStyle.Render("👥 Users") + "\n\n"
-		header += styles.HelpStyle.Render(fmt.Sprintf("Total: %d users | Press 't' to toggle to groups", len(p.users)))
+		header = titleStyle.Render("👥 System Users") + "\n\n"
+		header += styles.HelpStyle.Render(fmt.Sprintf("Total: %d users | Press 't' to toggle to groups view", len(p.users)))
 		header += "\n\n"
-		header += styles.KeyStyle.Render("User management requires sudo. Commands:")
-		header += "\n" + styles.HelpStyle.Render("  Create:  sudo useradd -m <username>")
-		header += "\n" + styles.HelpStyle.Render("  Delete:  sudo userdel -r <username>")
-		header += "\n" + styles.HelpStyle.Render("  Password: sudo passwd <username>")
-		header += "\n" + styles.HelpStyle.Render("  Lock:    sudo passwd -l <username>")
-		header += "\n" + styles.HelpStyle.Render("  Unlock:  sudo passwd -u <username>")
+		header += styles.KeyStyle.Render("═══ User Management Commands (requires sudo) ═══")
+		header += "\n\n" + styles.SubMenuStyle2.Render("● Create User:")
+		header += "\n" + styles.HelpStyle.Render("    sudo useradd -m <username>              # Create with home dir")
+		header += "\n" + styles.HelpStyle.Render("    sudo passwd <username>                  # Set password")
+		header += "\n\n" + styles.SubMenuStyle5.Render("● Delete User:")
+		header += "\n" + styles.HelpStyle.Render("    sudo userdel -r <username>              # Delete with home dir")
+		header += "\n\n" + styles.SubMenuStyle4.Render("● Add User to Group:")
+		header += "\n" + styles.HelpStyle.Render("    sudo usermod -aG <group> <user>        # Add to group")
+		header += "\n\n" + styles.SubMenuStyle3.Render("● Remove User from Group:")
+		header += "\n" + styles.HelpStyle.Render("    sudo gpasswd -d <user> <group>         # Remove from group")
+		header += "\n\n" + styles.SubMenuStyle6.Render("● Set/Reset Password:")
+		header += "\n" + styles.HelpStyle.Render("    sudo passwd <username>                  # Interactive password")
+		header += "\n\n" + styles.SubMenuStyle7.Render("● Change User Shell:")
+		header += "\n" + styles.HelpStyle.Render("    sudo chsh -s /bin/bash <user>           # Set bash shell")
+		header += "\n" + styles.HelpStyle.Render("    sudo chsh -s /bin/zsh <user>            # Set zsh shell")
+		header += "\n\n" + styles.SubMenuStyle5.Render("● Lock/Unlock User:")
+		header += "\n" + styles.HelpStyle.Render("    sudo passwd -l <username>               # Lock account")
+		header += "\n" + styles.HelpStyle.Render("    sudo passwd -u <username>               # Unlock account")
 		header += "\n"
 
 		// Calculate visible lines
@@ -134,14 +146,26 @@ func (p *UsersGroupsPanel) Render(width, height int, active bool) string {
 			}
 		}
 	} else {
-		header = titleStyle.Render("👥 Groups") + "\n\n"
-		header += styles.HelpStyle.Render(fmt.Sprintf("Total: %d groups | Press 't' to toggle to users", len(p.groups)))
+		header = titleStyle.Render("👥 System Groups") + "\n\n"
+		header += styles.HelpStyle.Render(fmt.Sprintf("Total: %d groups | Press 't' to toggle to users view", len(p.groups)))
 		header += "\n\n"
-		header += styles.KeyStyle.Render("Group management requires sudo. Commands:")
-		header += "\n" + styles.HelpStyle.Render("  Add user to group:    sudo usermod -aG <group> <user>")
-		header += "\n" + styles.HelpStyle.Render("  Remove from group:    sudo gpasswd -d <user> <group>")
-		header += "\n" + styles.HelpStyle.Render("  Create group:         sudo groupadd <groupname>")
-		header += "\n" + styles.HelpStyle.Render("  Delete group:         sudo groupdel <groupname>")
+		header += styles.KeyStyle.Render("═══ Group Management Commands (requires sudo) ═══")
+		header += "\n\n" + styles.SubMenuStyle2.Render("● Create Group:")
+		header += "\n" + styles.HelpStyle.Render("    sudo groupadd <groupname>               # Create new group")
+		header += "\n" + styles.HelpStyle.Render("    sudo groupadd -g <GID> <groupname>     # With specific GID")
+		header += "\n\n" + styles.SubMenuStyle5.Render("● Delete Group:")
+		header += "\n" + styles.HelpStyle.Render("    sudo groupdel <groupname>               # Delete group")
+		header += "\n\n" + styles.SubMenuStyle4.Render("● Add User to Group:")
+		header += "\n" + styles.HelpStyle.Render("    sudo usermod -aG <group> <user>        # Add user (append)")
+		header += "\n" + styles.HelpStyle.Render("    sudo gpasswd -a <user> <group>         # Alternative method")
+		header += "\n\n" + styles.SubMenuStyle3.Render("● Remove User from Group:")
+		header += "\n" + styles.HelpStyle.Render("    sudo gpasswd -d <user> <group>         # Remove user")
+		header += "\n\n" + styles.SubMenuStyle7.Render("● Modify Group:")
+		header += "\n" + styles.HelpStyle.Render("    sudo groupmod -n <new> <old>            # Rename group")
+		header += "\n" + styles.HelpStyle.Render("    sudo groupmod -g <GID> <group>          # Change GID")
+		header += "\n\n" + styles.SubMenuStyle6.Render("● View Group Members:")
+		header += "\n" + styles.HelpStyle.Render("    getent group <groupname>                # Show group info")
+		header += "\n" + styles.HelpStyle.Render("    groups <username>                       # Show user's groups")
 		header += "\n"
 
 		// Calculate visible lines
