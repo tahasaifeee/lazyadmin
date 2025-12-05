@@ -10,15 +10,7 @@ import (
 	"github.com/tahasaifeee/lazyadmin/ui/panels"
 )
 
-type panelType int
 type systemSubPanel int
-
-const (
-	panelSystem panelType = iota
-	panelServices
-	panelProcesses
-	panelDisk
-)
 
 const (
 	subPanelSummary systemSubPanel = iota
@@ -27,30 +19,30 @@ const (
 	subPanelNetwork
 	subPanelPorts
 	subPanelLogs
+	subPanelServices
+	subPanelProcesses
+	subPanelDisk
 )
 
 type Model struct {
 	width  int
 	height int
 
-	// Original panels
-	servicesPanel  *panels.ServicesPanel
-	processesPanel *panels.ProcessesPanel
-	diskPanel      *panels.DiskPanel
-
-	// New System Information sub-panels
-	systemSummaryPanel    *panels.SystemSummaryPanel
-	hardwareInfoPanel     *panels.HardwareInfoPanel
-	filesystemsInfoPanel  *panels.FilesystemsInfoPanel
-	networkInfoPanel      *panels.NetworkInfoPanel
-	portsInfoPanel        *panels.PortsInfoPanel
-	systemLogsPanel       *panels.SystemLogsPanel
+	// All panels
+	systemSummaryPanel   *panels.SystemSummaryPanel
+	hardwareInfoPanel    *panels.HardwareInfoPanel
+	filesystemsInfoPanel *panels.FilesystemsInfoPanel
+	networkInfoPanel     *panels.NetworkInfoPanel
+	portsInfoPanel       *panels.PortsInfoPanel
+	systemLogsPanel      *panels.SystemLogsPanel
+	servicesPanel        *panels.ServicesPanel
+	processesPanel       *panels.ProcessesPanel
+	diskPanel            *panels.DiskPanel
 
 	// Navigation
-	activePanel      panelType
-	activeSubPanel   systemSubPanel
-	inSystemSubmenu  bool
-	showHelp         bool
+	activeSubPanel  systemSubPanel
+	inSubmenu       bool
+	showHelp        bool
 
 	// Update ticker
 	lastUpdate time.Time
@@ -60,24 +52,20 @@ type tickMsg time.Time
 
 func NewModel() Model {
 	return Model{
-		// Original panels
-		servicesPanel:  panels.NewServicesPanel(),
-		processesPanel: panels.NewProcessesPanel(),
-		diskPanel:      panels.NewDiskPanel(),
-
-		// New sub-panels
 		systemSummaryPanel:   panels.NewSystemSummaryPanel(),
 		hardwareInfoPanel:    panels.NewHardwareInfoPanel(),
 		filesystemsInfoPanel: panels.NewFilesystemsInfoPanel(),
 		networkInfoPanel:     panels.NewNetworkInfoPanel(),
 		portsInfoPanel:       panels.NewPortsInfoPanel(),
 		systemLogsPanel:      panels.NewSystemLogsPanel(),
+		servicesPanel:        panels.NewServicesPanel(),
+		processesPanel:       panels.NewProcessesPanel(),
+		diskPanel:            panels.NewDiskPanel(),
 
-		activePanel:      panelSystem,
-		activeSubPanel:   subPanelSummary,
-		inSystemSubmenu:  true,
-		showHelp:         false,
-		lastUpdate:       time.Now(),
+		activeSubPanel: subPanelSummary,
+		inSubmenu:      true,
+		showHelp:       false,
+		lastUpdate:     time.Now(),
 	}
 }
 
@@ -106,148 +94,119 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 			return m, nil
 
 		case "esc":
-			// Go back to main menu if in submenu
-			if m.inSystemSubmenu {
-				m.inSystemSubmenu = false
+			// Go back to menu if in content view
+			if !m.inSubmenu {
+				m.inSubmenu = true
 			}
 			return m, nil
 
-		// Navigation between main panels
+		// Direct navigation keys (numbers only to avoid conflicts)
 		case "1":
-			m.activePanel = panelSystem
-			m.inSystemSubmenu = true
 			m.activeSubPanel = subPanelSummary
+			m.inSubmenu = false
 		case "2":
-			m.activePanel = panelServices
-			m.inSystemSubmenu = false
+			m.activeSubPanel = subPanelHardware
+			m.inSubmenu = false
 		case "3":
-			m.activePanel = panelProcesses
-			m.inSystemSubmenu = false
+			m.activeSubPanel = subPanelFilesystems
+			m.inSubmenu = false
 		case "4":
-			m.activePanel = panelDisk
-			m.inSystemSubmenu = false
+			m.activeSubPanel = subPanelNetwork
+			m.inSubmenu = false
+		case "5":
+			m.activeSubPanel = subPanelPorts
+			m.inSubmenu = false
+		case "6":
+			m.activeSubPanel = subPanelLogs
+			m.inSubmenu = false
+		case "7":
+			m.activeSubPanel = subPanelServices
+			m.inSubmenu = false
+		case "8":
+			m.activeSubPanel = subPanelProcesses
+			m.inSubmenu = false
+		case "9":
+			m.activeSubPanel = subPanelDisk
+			m.inSubmenu = false
 
-		case "tab":
-			m.inSystemSubmenu = false
-			m.activePanel = (m.activePanel + 1) % 4
-			if m.activePanel == panelSystem {
-				m.inSystemSubmenu = true
-			}
-
-		// Navigation within System Information sub-menu
-		case "a":
-			if m.activePanel == panelSystem {
-				m.activeSubPanel = subPanelSummary
-				m.inSystemSubmenu = true
-			}
-		case "b":
-			if m.activePanel == panelSystem {
-				m.activeSubPanel = subPanelHardware
-				m.inSystemSubmenu = true
-			}
-		case "c":
-			if m.activePanel == panelSystem {
-				m.activeSubPanel = subPanelFilesystems
-				m.inSystemSubmenu = true
-			}
-		case "n":
-			if m.activePanel == panelSystem {
-				m.activeSubPanel = subPanelNetwork
-				m.inSystemSubmenu = true
-			}
-		case "p":
-			if m.activePanel == panelSystem {
-				m.activeSubPanel = subPanelPorts
-				m.inSystemSubmenu = true
-			}
-		case "l":
-			if m.activePanel == panelSystem {
-				m.activeSubPanel = subPanelLogs
-				m.inSystemSubmenu = true
-			}
-
-		// Navigation within panels
+		// Navigation within menu
 		case "up", "k":
-			if m.activePanel == panelSystem && m.inSystemSubmenu {
-				// Navigate sub-menu
+			if m.inSubmenu {
+				// Navigate menu
 				if m.activeSubPanel > 0 {
 					m.activeSubPanel--
 				}
 			} else {
-				switch m.activePanel {
-				case panelServices:
+				// Navigate content
+				switch m.activeSubPanel {
+				case subPanelHardware:
+					m.hardwareInfoPanel.MoveUp()
+				case subPanelFilesystems:
+					m.filesystemsInfoPanel.MoveUp()
+				case subPanelPorts:
+					m.portsInfoPanel.MoveUp()
+				case subPanelLogs:
+					m.systemLogsPanel.MoveUp()
+				case subPanelServices:
 					m.servicesPanel.MoveUp()
-				case panelProcesses:
+				case subPanelProcesses:
 					m.processesPanel.MoveUp()
-				case panelDisk:
+				case subPanelDisk:
 					m.diskPanel.MoveUp()
-				case panelSystem:
-					switch m.activeSubPanel {
-					case subPanelHardware:
-						m.hardwareInfoPanel.MoveUp()
-					case subPanelFilesystems:
-						m.filesystemsInfoPanel.MoveUp()
-					case subPanelPorts:
-						m.portsInfoPanel.MoveUp()
-					case subPanelLogs:
-						m.systemLogsPanel.MoveUp()
-					}
 				}
 			}
 
 		case "down", "j":
-			if m.activePanel == panelSystem && m.inSystemSubmenu {
-				// Navigate sub-menu
-				if m.activeSubPanel < subPanelLogs {
+			if m.inSubmenu {
+				// Navigate menu
+				if m.activeSubPanel < subPanelDisk {
 					m.activeSubPanel++
 				}
 			} else {
-				switch m.activePanel {
-				case panelServices:
+				// Navigate content
+				switch m.activeSubPanel {
+				case subPanelHardware:
+					m.hardwareInfoPanel.MoveDown()
+				case subPanelFilesystems:
+					m.filesystemsInfoPanel.MoveDown()
+				case subPanelPorts:
+					m.portsInfoPanel.MoveDown()
+				case subPanelLogs:
+					m.systemLogsPanel.MoveDown()
+				case subPanelServices:
 					m.servicesPanel.MoveDown()
-				case panelProcesses:
+				case subPanelProcesses:
 					m.processesPanel.MoveDown()
-				case panelDisk:
+				case subPanelDisk:
 					m.diskPanel.MoveDown()
-				case panelSystem:
-					switch m.activeSubPanel {
-					case subPanelHardware:
-						m.hardwareInfoPanel.MoveDown()
-					case subPanelFilesystems:
-						m.filesystemsInfoPanel.MoveDown()
-					case subPanelPorts:
-						m.portsInfoPanel.MoveDown()
-					case subPanelLogs:
-						m.systemLogsPanel.MoveDown()
-					}
 				}
 			}
 
 		case "enter":
 			// Enter the selected submenu item
-			if m.activePanel == panelSystem && m.inSystemSubmenu {
-				m.inSystemSubmenu = false
+			if m.inSubmenu {
+				m.inSubmenu = false
 			}
 
 		// Service control actions (only for services panel)
 		case "s":
-			if m.activePanel == panelServices {
+			if m.activeSubPanel == subPanelServices && !m.inSubmenu {
 				m.servicesPanel.StartService()
 			}
 		case "x":
-			if m.activePanel == panelServices {
+			if m.activeSubPanel == subPanelServices && !m.inSubmenu {
 				m.servicesPanel.StopService()
 			}
 		case "r":
-			if m.activePanel == panelServices {
+			if m.activeSubPanel == subPanelServices && !m.inSubmenu {
 				m.servicesPanel.RestartService()
 			}
 		case "e":
-			if m.activePanel == panelServices {
+			if m.activeSubPanel == subPanelServices && !m.inSubmenu {
 				m.servicesPanel.EnableService()
 			}
 		case "d":
-			if m.activePanel == panelServices {
+			if m.activeSubPanel == subPanelServices && !m.inSubmenu {
 				m.servicesPanel.DisableService()
 			}
 		}
@@ -312,36 +271,33 @@ func (m Model) renderPanels() string {
 	// Calculate dimensions
 	contentHeight := m.height - 4 // subtract header and status bar
 
-	// Left column (menu)
-	menuWidth := 35
+	// Left column (menu) - wider to fit all options
+	menuWidth := 45
 	menu := m.renderMenu(menuWidth, contentHeight)
 
 	// Right column (panels)
 	panelWidth := m.width - menuWidth - 2
 
 	var activePanel string
-	switch m.activePanel {
-	case panelSystem:
-		switch m.activeSubPanel {
-		case subPanelSummary:
-			activePanel = m.systemSummaryPanel.Render(panelWidth, contentHeight, !m.inSystemSubmenu)
-		case subPanelHardware:
-			activePanel = m.hardwareInfoPanel.Render(panelWidth, contentHeight, !m.inSystemSubmenu)
-		case subPanelFilesystems:
-			activePanel = m.filesystemsInfoPanel.Render(panelWidth, contentHeight, !m.inSystemSubmenu)
-		case subPanelNetwork:
-			activePanel = m.networkInfoPanel.Render(panelWidth, contentHeight, !m.inSystemSubmenu)
-		case subPanelPorts:
-			activePanel = m.portsInfoPanel.Render(panelWidth, contentHeight, !m.inSystemSubmenu)
-		case subPanelLogs:
-			activePanel = m.systemLogsPanel.Render(panelWidth, contentHeight, !m.inSystemSubmenu)
-		}
-	case panelServices:
-		activePanel = m.servicesPanel.Render(panelWidth, contentHeight, true)
-	case panelProcesses:
-		activePanel = m.processesPanel.Render(panelWidth, contentHeight, true)
-	case panelDisk:
-		activePanel = m.diskPanel.Render(panelWidth, contentHeight, true)
+	switch m.activeSubPanel {
+	case subPanelSummary:
+		activePanel = m.systemSummaryPanel.Render(panelWidth, contentHeight, !m.inSubmenu)
+	case subPanelHardware:
+		activePanel = m.hardwareInfoPanel.Render(panelWidth, contentHeight, !m.inSubmenu)
+	case subPanelFilesystems:
+		activePanel = m.filesystemsInfoPanel.Render(panelWidth, contentHeight, !m.inSubmenu)
+	case subPanelNetwork:
+		activePanel = m.networkInfoPanel.Render(panelWidth, contentHeight, !m.inSubmenu)
+	case subPanelPorts:
+		activePanel = m.portsInfoPanel.Render(panelWidth, contentHeight, !m.inSubmenu)
+	case subPanelLogs:
+		activePanel = m.systemLogsPanel.Render(panelWidth, contentHeight, !m.inSubmenu)
+	case subPanelServices:
+		activePanel = m.servicesPanel.Render(panelWidth, contentHeight, !m.inSubmenu)
+	case subPanelProcesses:
+		activePanel = m.processesPanel.Render(panelWidth, contentHeight, !m.inSubmenu)
+	case subPanelDisk:
+		activePanel = m.diskPanel.Render(panelWidth, contentHeight, !m.inSubmenu)
 	}
 
 	// Join horizontally
@@ -353,72 +309,49 @@ func (m Model) renderPanels() string {
 }
 
 func (m Model) renderMenu(width, height int) string {
-	mainMenuItems := []struct {
-		key   string
-		label string
-		panel panelType
-		icon  string
-	}{
-		{"1", "System Information", panelSystem, "⚙"},
-		{"2", "Services", panelServices, "🔧"},
-		{"3", "Processes", panelProcesses, "⚡"},
-		{"4", "Disk Usage", panelDisk, "💾"},
-	}
-
-	subMenuItems := []struct {
+	menuItems := []struct {
 		key      string
 		label    string
 		subPanel systemSubPanel
-		icon     string
+		style    lipgloss.Style
 	}{
-		{"a", "System Summary", subPanelSummary, "📊"},
-		{"b", "Hardware Info", subPanelHardware, "🖥"},
-		{"c", "Filesystems", subPanelFilesystems, "💿"},
-		{"n", "Network Interfaces", subPanelNetwork, "🌐"},
-		{"p", "Listening Ports", subPanelPorts, "🔌"},
-		{"l", "System Logs", subPanelLogs, "📋"},
+		{"1", "System Summary", subPanelSummary, styles.SubMenuStyle1},
+		{"2", "Hardware Info", subPanelHardware, styles.SubMenuStyle2},
+		{"3", "Filesystems", subPanelFilesystems, styles.SubMenuStyle3},
+		{"4", "Network Interfaces", subPanelNetwork, styles.SubMenuStyle4},
+		{"5", "Listening Ports", subPanelPorts, styles.SubMenuStyle5},
+		{"6", "System Logs", subPanelLogs, styles.SubMenuStyle6},
+		{"7", "Services", subPanelServices, styles.SubMenuStyle7},
+		{"8", "Processes", subPanelProcesses, styles.SubMenuStyle8},
+		{"9", "Disk Usage", subPanelDisk, styles.SubMenuStyle9},
 	}
 
 	var items []string
-	items = append(items, styles.TitleStyle.Render("Panels"))
+	items = append(items, styles.TitleStyle.Render("System Information"))
 	items = append(items, "")
 
-	// Render main menu items
-	for _, item := range mainMenuItems {
+	// Render menu items with colors
+	for _, item := range menuItems {
 		var itemStr string
-		if item.panel == m.activePanel {
-			itemStr = styles.ActiveMenuItemStyle.Render(fmt.Sprintf("%s [%s] %s",
-				item.icon, item.key, item.label))
+		prefix := "  "
+
+		if m.activeSubPanel == item.subPanel {
+			if m.inSubmenu {
+				// Highlight with selection indicator in menu mode
+				itemStr = styles.SelectedItemStyle.Render(fmt.Sprintf("▶ [%s] %s",
+					item.key, item.label))
+			} else {
+				// Active but in content mode - show with bold style
+				boldStyle := item.style.Copy().Bold(true)
+				itemStr = boldStyle.Render(fmt.Sprintf("%s[%s] %s",
+					prefix, item.key, item.label))
+			}
 		} else {
-			itemStr = styles.MenuItemStyle.Render(fmt.Sprintf("%s [%s] %s",
-				item.icon, item.key, item.label))
+			// Inactive - show with colored style
+			itemStr = item.style.Render(fmt.Sprintf("%s[%s] %s",
+				prefix, item.key, item.label))
 		}
 		items = append(items, itemStr)
-
-		// Show sub-menu if System Information is selected
-		if item.panel == panelSystem && m.activePanel == panelSystem {
-			items = append(items, "")
-			items = append(items, styles.HelpStyle.Render("  Sub-Menu:"))
-			for _, subItem := range subMenuItems {
-				var subItemStr string
-				prefix := "    "
-				if m.activeSubPanel == subItem.subPanel {
-					if m.inSystemSubmenu {
-						// Highlight in menu navigation mode
-						subItemStr = styles.SelectedItemStyle.Render(fmt.Sprintf("%s▶ %s [%s] %s",
-							prefix, subItem.icon, subItem.key, subItem.label))
-					} else {
-						// Active but in content mode
-						subItemStr = styles.ActiveMenuItemStyle.Render(fmt.Sprintf("%s  %s [%s] %s",
-							prefix, subItem.icon, subItem.key, subItem.label))
-					}
-				} else {
-					subItemStr = styles.MenuItemStyle.Render(fmt.Sprintf("%s  %s [%s] %s",
-						prefix, subItem.icon, subItem.key, subItem.label))
-				}
-				items = append(items, subItemStr)
-			}
-		}
 	}
 
 	content := lipgloss.JoinVertical(lipgloss.Left, items...)
@@ -430,9 +363,9 @@ func (m Model) renderMenu(width, height int) string {
 }
 
 func (m Model) renderStatusBar() string {
-	leftSection := " Tab: Switch | ↑↓/jk: Navigate"
-	if m.activePanel == panelSystem {
-		leftSection += " | Enter: Select | Esc: Back"
+	leftSection := " 1-9: Quick Jump | ↑↓/jk: Navigate | Enter: Select | Esc: Back"
+	if m.activeSubPanel == subPanelServices && !m.inSubmenu {
+		leftSection = " s:Start | x:Stop | r:Restart | e:Enable | d:Disable | Esc: Back"
 	}
 	leftSection += " | ?: Help | q: Quit "
 
@@ -458,23 +391,25 @@ func (m Model) renderHelp() string {
 		"",
 		styles.TitleStyle.Render("Navigation"),
 		"",
-		m.renderHelpRow("1, 2, 3, 4", "Switch to main panel"),
-		m.renderHelpRow("Tab", "Switch to next panel"),
+		m.renderHelpRow("1-9", "Quick jump to menu item"),
 		m.renderHelpRow("↑/k", "Move selection up"),
 		m.renderHelpRow("↓/j", "Move selection down"),
-		m.renderHelpRow("Enter", "Select submenu item (System Info)"),
-		m.renderHelpRow("Esc", "Go back to submenu"),
+		m.renderHelpRow("Enter", "View selected menu item"),
+		m.renderHelpRow("Esc", "Return to menu"),
 		"",
-		styles.TitleStyle.Render("System Information Submenu"),
+		styles.TitleStyle.Render("Menu Options"),
 		"",
-		m.renderHelpRow("a", "System Summary (CPU, RAM, uptime)"),
-		m.renderHelpRow("b", "Hardware Info (lshw/dmidecode)"),
-		m.renderHelpRow("c", "Mounted Filesystems (df)"),
-		m.renderHelpRow("n", "Network Interfaces & IPs"),
-		m.renderHelpRow("p", "Listening Ports"),
-		m.renderHelpRow("l", "System Logs (journalctl)"),
+		styles.SubMenuStyle1.Render(m.renderHelpRow("1", "System Summary (CPU, RAM, uptime)")),
+		styles.SubMenuStyle2.Render(m.renderHelpRow("2", "Hardware Info (lshw/dmidecode)")),
+		styles.SubMenuStyle3.Render(m.renderHelpRow("3", "Mounted Filesystems (df)")),
+		styles.SubMenuStyle4.Render(m.renderHelpRow("4", "Network Interfaces & IPs")),
+		styles.SubMenuStyle5.Render(m.renderHelpRow("5", "Listening Ports")),
+		styles.SubMenuStyle6.Render(m.renderHelpRow("6", "System Logs (journalctl)")),
+		styles.SubMenuStyle7.Render(m.renderHelpRow("7", "Services Management")),
+		styles.SubMenuStyle8.Render(m.renderHelpRow("8", "Process Monitor")),
+		styles.SubMenuStyle9.Render(m.renderHelpRow("9", "Disk Usage")),
 		"",
-		styles.TitleStyle.Render("Service Control (Services Panel)"),
+		styles.TitleStyle.Render("Service Control (Services Panel - Press 7)"),
 		"",
 		m.renderHelpRow("s", "Start selected service"),
 		m.renderHelpRow("x", "Stop selected service"),
