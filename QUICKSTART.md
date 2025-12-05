@@ -4,16 +4,26 @@ This guide will help you quickly install and start using LazyAdmin on your Linux
 
 ## Fastest Installation (1 Command) ⚡
 
-Run this single command to install LazyAdmin:
+**If you already have Go installed:**
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/tahasaifeee/lazyadmin/main/install.sh | sudo bash
 ```
 
+**If you DON'T have Go (this will install Go automatically):**
+
+```bash
+curl -sSL https://raw.githubusercontent.com/tahasaifeee/lazyadmin/main/install-with-go.sh | sudo bash
+```
+
 Or with `wget`:
 
 ```bash
+# With Go installed
 wget -qO- https://raw.githubusercontent.com/tahasaifeee/lazyadmin/main/install.sh | sudo bash
+
+# Without Go (auto-installs)
+wget -qO- https://raw.githubusercontent.com/tahasaifeee/lazyadmin/main/install-with-go.sh | sudo bash
 ```
 
 Then run:
