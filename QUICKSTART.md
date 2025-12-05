@@ -87,7 +87,23 @@ When you first run LazyAdmin, you'll see four main panels:
 
 ## Updating LazyAdmin
 
-When you want to update to the latest version:
+### One-Line Update (Fastest) ⚡
+
+Update to the latest version instantly:
+
+```bash
+curl -sSL https://raw.githubusercontent.com/tahasaifeee/lazyadmin/main/update.sh | sudo bash
+```
+
+Or with `wget`:
+
+```bash
+wget -qO- https://raw.githubusercontent.com/tahasaifeee/lazyadmin/main/update.sh | sudo bash
+```
+
+### Alternative Methods
+
+If you cloned the repository:
 
 ```bash
 cd lazyadmin
