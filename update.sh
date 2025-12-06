@@ -17,9 +17,6 @@ BINARY_NAME="lazyadmin"
 INSTALL_PATH="/usr/local/bin"
 REPO_URL="https://github.com/tahasaifeee/lazyadmin.git"
 TEMP_DIR=""
-GO_VERSION="1.21.6"
-GO_TARBALL="go${GO_VERSION}.linux-amd64.tar.gz"
-GO_URL="https://go.dev/dl/${GO_TARBALL}"
 
 print_message() {
     local color=$1
@@ -56,66 +53,8 @@ check_installed() {
     lazyadmin --version 2>/dev/null || echo "  Version: unknown"
 }
 
-install_go() {
-    print_message "$BLUE" "→ Installing Go ${GO_VERSION}..."
-
-    # Create temp directory for Go install
-    GO_TEMP_DIR=$(mktemp -d)
-    cd "$GO_TEMP_DIR"
-
-    # Download Go
-    print_message "$BLUE" "  Downloading Go..."
-    wget -q --show-progress "$GO_URL" || {
-        print_message "$RED" "❌ Failed to download Go"
-        exit 1
-    }
-
-    # Remove old Go installation
-    if [ -d "/usr/local/go" ]; then
-        print_message "$BLUE" "  Removing old Go installation..."
-        rm -rf /usr/local/go
-    fi
-
-    # Extract Go
-    print_message "$BLUE" "  Installing Go to /usr/local/go..."
-    tar -C /usr/local -xzf "$GO_TARBALL" || {
-        print_message "$RED" "❌ Failed to extract Go"
-        exit 1
-    }
-
-    # Add to PATH for current session
-    export PATH=$PATH:/usr/local/go/bin
-
-    # Add to system-wide profile
-    if ! grep -q "/usr/local/go/bin" /etc/profile 2>/dev/null; then
-        echo 'export PATH=$PATH:/usr/local/go/bin' >> /etc/profile
-    fi
-
-    # Add to root's bashrc
-    if ! grep -q "/usr/local/go/bin" ~/.bashrc 2>/dev/null; then
-        echo 'export PATH=$PATH:/usr/local/go/bin' >> ~/.bashrc
-    fi
-
-    # Cleanup
-    cd /
-    rm -rf "$GO_TEMP_DIR"
-
-    print_message "$GREEN" "✓ Go ${GO_VERSION} installed successfully!"
-    go version
-}
-
 check_dependencies() {
     print_message "$BLUE" "→ Checking dependencies..."
-
-    # Check for wget (needed for Go install if Go is missing)
-    if ! command -v wget &> /dev/null; then
-        print_message "$YELLOW" "→ Installing wget..."
-        apt-get update -qq
-        apt-get install -y wget || {
-            print_message "$RED" "❌ Failed to install wget"
-            exit 1
-        }
-    fi
 
     # Check for git
     if ! command -v git &> /dev/null; then
@@ -127,14 +66,14 @@ check_dependencies() {
         }
     fi
 
-    # Check for Go and install if missing
-    if ! command -v go &> /dev/null; then
-        print_message "$YELLOW" "⚠️  Go is not installed"
-        print_message "$BLUE" "→ Installing Go automatically..."
-        install_go
-    else
-        GO_VER=$(go version | awk '{print $3}' | sed 's/go//')
-        print_message "$GREEN" "✓ Go $GO_VER is already installed"
+    # Check for dialog or whiptail
+    if ! command -v dialog &> /dev/null && ! command -v whiptail &> /dev/null; then
+        print_message "$YELLOW" "→ Installing dialog..."
+        apt-get update -qq
+        apt-get install -y dialog || {
+            print_message "$RED" "❌ Failed to install dialog"
+            exit 1
+        }
     fi
 
     print_message "$GREEN" "✓ All dependencies are installed"
@@ -152,17 +91,17 @@ update_lazyadmin() {
     }
 
     print_message "$GREEN" "✓ Latest version downloaded"
-    print_message "$BLUE" "→ Building LazyAdmin..."
+    print_message "$BLUE" "→ Preparing LazyAdmin..."
 
-    go build -o "${BINARY_NAME}" || {
-        print_message "$RED" "❌ Build failed"
+    chmod +x lazyadmin.sh || {
+        print_message "$RED" "❌ Failed to make script executable"
         exit 1
     }
 
-    print_message "$GREEN" "✓ Build complete"
-    print_message "$BLUE" "→ Installing updated binary..."
+    print_message "$GREEN" "✓ Preparation complete"
+    print_message "$BLUE" "→ Installing updated script..."
 
-    install -m 755 "${BINARY_NAME}" "${INSTALL_PATH}/${BINARY_NAME}" || {
+    install -m 755 lazyadmin.sh "${INSTALL_PATH}/${BINARY_NAME}" || {
         print_message "$RED" "❌ Installation failed"
         exit 1
     }
