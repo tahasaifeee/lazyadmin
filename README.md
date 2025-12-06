@@ -37,105 +37,30 @@ The interface features:
 
 ## Installation
 
-### One-Line Install (Fastest) ⚡
+### One-Line Install ⚡
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/tahasaifeee/lazyadmin/main/install.sh | sudo bash
 ```
 
-Or if you prefer `wget`:
-
-```bash
-wget -qO- https://raw.githubusercontent.com/tahasaifeee/lazyadmin/main/install.sh | sudo bash
-```
-
-After installation, you can run `lazyadmin` from anywhere:
+After installation, run from anywhere:
 
 ```bash
 lazyadmin
 ```
 
-### Quick Install (Alternative)
-
-Clone the repository and run the installation script:
-
-```bash
-git clone https://github.com/tahasaifeee/lazyadmin.git
-cd lazyadmin
-sudo ./install.sh
-```
-
-### Using Makefile
-
-Alternatively, you can use the Makefile:
-
-```bash
-git clone https://github.com/tahasaifeee/lazyadmin.git
-cd lazyadmin
-sudo make install
-```
-
-### Manual Installation
-
-If you prefer to install manually:
-
-```bash
-git clone https://github.com/tahasaifeee/lazyadmin.git
-cd lazyadmin
-chmod +x lazyadmin.sh
-sudo install -m 755 lazyadmin.sh /usr/local/bin/lazyadmin
-```
-
-### Requirements
-
-- Bash 4.0 or later
-- `dialog` or `whiptail` (auto-installed if missing)
-- Linux operating system
+**Requirements:**
+- Bash 4.0+
+- `dialog` or `whiptail` (auto-installed)
 - systemd (for service management)
-- Root/sudo privileges for system modifications
 
 ## Updating LazyAdmin
-
-### One-Line Update (Fastest) ⚡
-
-Update to the latest version with a single command:
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/tahasaifeee/lazyadmin/main/update.sh | sudo bash
 ```
 
-Or with `wget`:
-
-```bash
-wget -qO- https://raw.githubusercontent.com/tahasaifeee/lazyadmin/main/update.sh | sudo bash
-```
-
-### Alternative Update Methods
-
-**If you cloned the repository:**
-
-```bash
-cd lazyadmin
-sudo make update
-```
-
-Or manually:
-
-```bash
-cd lazyadmin
-git pull
-sudo ./install.sh
-```
-
 ## Uninstalling
-
-To remove LazyAdmin from your system:
-
-```bash
-sudo make uninstall
-```
-
-Or manually:
 
 ```bash
 sudo rm /usr/local/bin/lazyadmin
@@ -143,24 +68,15 @@ sudo rm /usr/local/bin/lazyadmin
 
 ## Usage
 
-Once installed, simply run:
-
 ```bash
 lazyadmin
 ```
 
-Run with sudo for full access to all features:
-
-```bash
-sudo lazyadmin
-```
-
-### Navigation
-
-- Use **arrow keys** (↑ ↓) to navigate menus
-- Press **Enter** to select an option
-- Press **Esc** or select "Back" to return to previous menu
-- Select **"Exit"** or **"0"** to quit the application
+**Navigation:**
+- Arrow keys (↑ ↓) to navigate
+- Enter to select
+- Esc to go back
+- 0 to exit
 
 ### Main Menu Structure
 
