@@ -53,9 +53,12 @@ check_root() {
 check_dependencies() {
     print_message "$BLUE" "→ Checking dependencies..."
 
-    if ! command -v go &> /dev/null; then
-        print_message "$RED" "❌ Go is not installed. Please install Go 1.16 or later."
-        print_message "$YELLOW" "Visit: https://golang.org/doc/install"
+    if ! command -v dialog &> /dev/null && ! command -v whiptail &> /dev/null; then
+        print_message "$RED" "❌ Neither 'dialog' nor 'whiptail' is installed."
+        print_message "$YELLOW" "Please install dialog:"
+        print_message "$YELLOW" "  Ubuntu/Debian: sudo apt-get install dialog"
+        print_message "$YELLOW" "  RHEL/CentOS:   sudo yum install dialog"
+        print_message "$YELLOW" "  Arch:          sudo pacman -S dialog"
         exit 1
     fi
 
@@ -70,7 +73,7 @@ check_dependencies() {
 # Clone repository if needed
 setup_repo() {
     # Check if we're already in the repo
-    if [ -f "go.mod" ] && grep -q "github.com/tahasaifeee/lazyadmin" go.mod 2>/dev/null; then
+    if [ -f "lazyadmin.sh" ]; then
         print_message "$BLUE" "→ Using existing repository"
         IN_REPO=true
         return
@@ -90,28 +93,29 @@ setup_repo() {
     print_message "$GREEN" "✓ Repository cloned successfully"
 }
 
-# Build the application
-build_app() {
-    print_message "$BLUE" "→ Building ${BINARY_NAME}..."
+# Prepare the script
+prepare_script() {
+    print_message "$BLUE" "→ Preparing ${BINARY_NAME}..."
 
-    if [ ! -f "go.mod" ]; then
-        print_message "$RED" "❌ Not in lazyadmin directory."
+    if [ ! -f "lazyadmin.sh" ]; then
+        print_message "$RED" "❌ lazyadmin.sh not found in current directory."
         exit 1
     fi
 
-    go build -o "${BINARY_NAME}" || {
-        print_message "$RED" "❌ Build failed"
+    # Make executable
+    chmod +x lazyadmin.sh || {
+        print_message "$RED" "❌ Failed to make script executable"
         exit 1
     }
 
-    print_message "$GREEN" "✓ Build complete"
+    print_message "$GREEN" "✓ Script prepared"
 }
 
-# Install the binary
+# Install the script
 install_binary() {
     print_message "$BLUE" "→ Installing ${BINARY_NAME} to ${INSTALL_PATH}..."
 
-    install -m 755 "${BINARY_NAME}" "${INSTALL_PATH}/${BINARY_NAME}" || {
+    install -m 755 lazyadmin.sh "${INSTALL_PATH}/${BINARY_NAME}" || {
         print_message "$RED" "❌ Installation failed"
         exit 1
     }
@@ -138,7 +142,7 @@ main() {
     check_root
     check_dependencies
     setup_repo
-    build_app
+    prepare_script
     install_binary
 
     echo ""
