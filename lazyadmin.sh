@@ -411,22 +411,49 @@ delete_user() {
     echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 
-    echo -e "${BRIGHT_YELLOW}┌─ Existing Users ─────────────────────────────────────────────┐${NC}"
-    awk -F: '$3 >= 1000 {printf "  '"${BRIGHT_GREEN}"'%-15s'"${NC}"' UID:'"${BRIGHT_CYAN}"'%-6s'"${NC}"' Shell:'"${WHITE}"'%s'"${NC}"'\n", $1, $3, $7}' /etc/passwd
-    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
-    echo ""
+    # Get users into array
+    mapfile -t users < <(awk -F: '$3 >= 1000 {print $1}' /etc/passwd)
 
-    read -p "Enter username to delete: " username
-
-    if [ -z "$username" ]; then
-        echo -e "${RED}Username cannot be empty${NC}"
+    if [ ${#users[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No users found (UID >= 1000)${NC}"
         read -p "Press Enter to continue..."
         return
     fi
 
-    # Check if user exists
-    if ! id "$username" &>/dev/null; then
-        echo -e "${RED}User '$username' does not exist${NC}"
+    echo -e "${BRIGHT_YELLOW}┌─ Select User to Delete ──────────────────────────────────────┐${NC}"
+    local i=1
+    for user in "${users[@]}"; do
+        local uid=$(id -u "$user")
+        local shell=$(getent passwd "$user" | cut -d: -f7)
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %-15s ${DIM}UID:${NC}${BRIGHT_CYAN}%-6s${NC} ${DIM}Shell:${NC}${WHITE}%s${NC}\n" "$i" "$user" "$uid" "$shell"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter user number (or 0 to cancel): " user_num
+
+    if [ -z "$user_num" ] || [ "$user_num" -eq 0 ] 2>/dev/null; then
+        echo -e "${YELLOW}Cancelled${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    if ! [[ "$user_num" =~ ^[0-9]+$ ]] || [ "$user_num" -lt 1 ] || [ "$user_num" -gt ${#users[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local username="${users[$((user_num-1))]}"
+
+    echo ""
+    echo -e "${BRIGHT_YELLOW}⚠  Confirm deletion of user: ${BRIGHT_RED}$username${NC}"
+    read -p "Are you sure? (y/n): " -n 1 confirm
+    echo ""
+
+    if ! [[ $confirm =~ ^[Yy]$ ]]; then
+        echo -e "${YELLOW}Cancelled${NC}"
         read -p "Press Enter to continue..."
         return
     fi
@@ -459,42 +486,82 @@ add_user_to_group() {
     echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 
-    echo -e "${BRIGHT_YELLOW}┌─ Existing Users ─────────────────────────────────────────────┐${NC}"
-    awk -F: '$3 >= 1000 {printf "  '"${BRIGHT_GREEN}"'%-20s'"${NC}"' UID:'"${BRIGHT_CYAN}"'%s'"${NC}"'\n", $1, $3}' /etc/passwd
+    # Get users into array
+    mapfile -t users < <(awk -F: '$3 >= 1000 {print $1}' /etc/passwd)
+
+    if [ ${#users[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No users found (UID >= 1000)${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Select User ────────────────────────────────────────────────┐${NC}"
+    local i=1
+    for user in "${users[@]}"; do
+        local uid=$(id -u "$user")
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %-20s ${DIM}UID:${NC}${BRIGHT_CYAN}%s${NC}\n" "$i" "$user" "$uid"
+        ((i++))
+    done
     echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
     echo ""
 
-    echo -e "${BRIGHT_BLUE}┌─ Available Groups ───────────────────────────────────────────┐${NC}"
-    echo -n "  ${WHITE}"
-    cut -d: -f1 /etc/group | head -n 20 | column
-    echo -e "${NC}  ${DIM}(showing first 20 groups)${NC}"
+    read -p "Enter user number (or 0 to cancel): " user_num
+
+    if [ -z "$user_num" ] || [ "$user_num" -eq 0 ] 2>/dev/null; then
+        echo -e "${YELLOW}Cancelled${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    if ! [[ "$user_num" =~ ^[0-9]+$ ]] || [ "$user_num" -lt 1 ] || [ "$user_num" -gt ${#users[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local username="${users[$((user_num-1))]}"
+
+    echo ""
+    # Get groups into array
+    mapfile -t groups < <(cut -d: -f1 /etc/group | sort)
+
+    echo -e "${BRIGHT_BLUE}┌─ Select Group ───────────────────────────────────────────────┐${NC}"
+    i=1
+    for group in "${groups[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %-20s" "$i" "$group"
+        ((i++))
+        if [ $((i % 3)) -eq 1 ]; then
+            echo ""
+        fi
+    done
+    [ $((i % 3)) -ne 1 ] && echo ""
     echo -e "${BRIGHT_BLUE}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo -e "${DIM}Total groups: ${#groups[@]}${NC}"
     echo ""
 
-    read -p "Enter username: " username
+    read -p "Enter group number (or 0 to cancel): " group_num
 
-    if [ -z "$username" ]; then
-        echo -e "${RED}Username cannot be empty${NC}"
+    if [ -z "$group_num" ] || [ "$group_num" -eq 0 ] 2>/dev/null; then
+        echo -e "${YELLOW}Cancelled${NC}"
         read -p "Press Enter to continue..."
         return
     fi
 
-    if ! id "$username" &>/dev/null; then
-        echo -e "${RED}User '$username' does not exist${NC}"
+    if ! [[ "$group_num" =~ ^[0-9]+$ ]] || [ "$group_num" -lt 1 ] || [ "$group_num" -gt ${#groups[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
         read -p "Press Enter to continue..."
         return
     fi
 
-    read -p "Enter group name: " groupname
+    local groupname="${groups[$((group_num-1))]}"
 
-    if [ -z "$groupname" ]; then
-        echo -e "${RED}Group name cannot be empty${NC}"
-        read -p "Press Enter to continue..."
-        return
-    fi
+    echo ""
+    echo -e "${BRIGHT_YELLOW}Adding user ${BRIGHT_CYAN}$username${NC} to group ${BRIGHT_CYAN}$groupname${NC}"
+    read -p "Confirm? (y/n): " -n 1 confirm
+    echo ""
 
-    if ! getent group "$groupname" &>/dev/null; then
-        echo -e "${RED}Group '$groupname' does not exist${NC}"
+    if ! [[ $confirm =~ ^[Yy]$ ]]; then
+        echo -e "${YELLOW}Cancelled${NC}"
         read -p "Press Enter to continue..."
         return
     fi
@@ -519,42 +586,82 @@ remove_user_from_group() {
     echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 
-    echo -e "${BRIGHT_YELLOW}┌─ Existing Users ─────────────────────────────────────────────┐${NC}"
-    awk -F: '$3 >= 1000 {printf "  '"${BRIGHT_GREEN}"'%-20s'"${NC}"' UID:'"${BRIGHT_CYAN}"'%s'"${NC}"'\n", $1, $3}' /etc/passwd
+    # Get users into array
+    mapfile -t users < <(awk -F: '$3 >= 1000 {print $1}' /etc/passwd)
+
+    if [ ${#users[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No users found (UID >= 1000)${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Select User ────────────────────────────────────────────────┐${NC}"
+    local i=1
+    for user in "${users[@]}"; do
+        local uid=$(id -u "$user")
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %-20s ${DIM}UID:${NC}${BRIGHT_CYAN}%s${NC}\n" "$i" "$user" "$uid"
+        ((i++))
+    done
     echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
     echo ""
 
-    echo -e "${BRIGHT_BLUE}┌─ Available Groups ───────────────────────────────────────────┐${NC}"
-    echo -n "  ${WHITE}"
-    cut -d: -f1 /etc/group | head -n 20 | column
-    echo -e "${NC}  ${DIM}(showing first 20 groups)${NC}"
+    read -p "Enter user number (or 0 to cancel): " user_num
+
+    if [ -z "$user_num" ] || [ "$user_num" -eq 0 ] 2>/dev/null; then
+        echo -e "${YELLOW}Cancelled${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    if ! [[ "$user_num" =~ ^[0-9]+$ ]] || [ "$user_num" -lt 1 ] || [ "$user_num" -gt ${#users[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local username="${users[$((user_num-1))]}"
+
+    echo ""
+    # Get groups into array
+    mapfile -t groups < <(cut -d: -f1 /etc/group | sort)
+
+    echo -e "${BRIGHT_BLUE}┌─ Select Group ───────────────────────────────────────────────┐${NC}"
+    i=1
+    for group in "${groups[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %-20s" "$i" "$group"
+        ((i++))
+        if [ $((i % 3)) -eq 1 ]; then
+            echo ""
+        fi
+    done
+    [ $((i % 3)) -ne 1 ] && echo ""
     echo -e "${BRIGHT_BLUE}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo -e "${DIM}Total groups: ${#groups[@]}${NC}"
     echo ""
 
-    read -p "Enter username: " username
+    read -p "Enter group number (or 0 to cancel): " group_num
 
-    if [ -z "$username" ]; then
-        echo -e "${RED}Username cannot be empty${NC}"
+    if [ -z "$group_num" ] || [ "$group_num" -eq 0 ] 2>/dev/null; then
+        echo -e "${YELLOW}Cancelled${NC}"
         read -p "Press Enter to continue..."
         return
     fi
 
-    if ! id "$username" &>/dev/null; then
-        echo -e "${RED}User '$username' does not exist${NC}"
+    if ! [[ "$group_num" =~ ^[0-9]+$ ]] || [ "$group_num" -lt 1 ] || [ "$group_num" -gt ${#groups[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
         read -p "Press Enter to continue..."
         return
     fi
 
-    read -p "Enter group name: " groupname
+    local groupname="${groups[$((group_num-1))]}"
 
-    if [ -z "$groupname" ]; then
-        echo -e "${RED}Group name cannot be empty${NC}"
-        read -p "Press Enter to continue..."
-        return
-    fi
+    echo ""
+    echo -e "${BRIGHT_YELLOW}Removing user ${BRIGHT_CYAN}$username${NC} from group ${BRIGHT_CYAN}$groupname${NC}"
+    read -p "Confirm? (y/n): " -n 1 confirm
+    echo ""
 
-    if ! getent group "$groupname" &>/dev/null; then
-        echo -e "${RED}Group '$groupname' does not exist${NC}"
+    if ! [[ $confirm =~ ^[Yy]$ ]]; then
+        echo -e "${YELLOW}Cancelled${NC}"
         read -p "Press Enter to continue..."
         return
     fi
@@ -579,25 +686,43 @@ set_password() {
     echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 
-    echo -e "${BRIGHT_YELLOW}┌─ Existing Users ─────────────────────────────────────────────┐${NC}"
-    awk -F: '$3 >= 1000 {printf "  '"${BRIGHT_GREEN}"'%-20s'"${NC}"' UID:'"${BRIGHT_CYAN}"'%s'"${NC}"'\n", $1, $3}' /etc/passwd
+    # Get users into array
+    mapfile -t users < <(awk -F: '$3 >= 1000 {print $1}' /etc/passwd)
+
+    if [ ${#users[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No users found (UID >= 1000)${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Select User ────────────────────────────────────────────────┐${NC}"
+    local i=1
+    for user in "${users[@]}"; do
+        local uid=$(id -u "$user")
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %-20s ${DIM}UID:${NC}${BRIGHT_CYAN}%s${NC}\n" "$i" "$user" "$uid"
+        ((i++))
+    done
     echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
     echo ""
 
-    read -p "Enter username: " username
+    read -p "Enter user number (or 0 to cancel): " user_num
 
-    if [ -z "$username" ]; then
-        echo -e "${RED}Username cannot be empty${NC}"
+    if [ -z "$user_num" ] || [ "$user_num" -eq 0 ] 2>/dev/null; then
+        echo -e "${YELLOW}Cancelled${NC}"
         read -p "Press Enter to continue..."
         return
     fi
 
-    if ! id "$username" &>/dev/null; then
-        echo -e "${RED}User '$username' does not exist${NC}"
+    if ! [[ "$user_num" =~ ^[0-9]+$ ]] || [ "$user_num" -lt 1 ] || [ "$user_num" -gt ${#users[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
         read -p "Press Enter to continue..."
         return
     fi
 
+    local username="${users[$((user_num-1))]}"
+
+    echo ""
+    echo -e "${BRIGHT_CYAN}Setting password for user: ${BRIGHT_YELLOW}$username${NC}"
     echo ""
     sudo passwd "$username"
 
@@ -612,27 +737,43 @@ change_shell() {
     echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 
-    echo -e "${BRIGHT_YELLOW}┌─ Existing Users ─────────────────────────────────────────────┐${NC}"
-    awk -F: '$3 >= 1000 {printf "  '"${BRIGHT_GREEN}"'%-20s'"${NC}"' Current Shell:'"${WHITE}"'%s'"${NC}"'\n", $1, $7}' /etc/passwd
+    # Get users into array
+    mapfile -t users < <(awk -F: '$3 >= 1000 {print $1}' /etc/passwd)
+
+    if [ ${#users[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No users found (UID >= 1000)${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Select User ────────────────────────────────────────────────┐${NC}"
+    local i=1
+    for user in "${users[@]}"; do
+        local shell=$(getent passwd "$user" | cut -d: -f7)
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %-20s ${DIM}Current Shell:${NC} ${WHITE}%s${NC}\n" "$i" "$user" "$shell"
+        ((i++))
+    done
     echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
     echo ""
 
-    read -p "Enter username: " username
+    read -p "Enter user number (or 0 to cancel): " user_num
 
-    if [ -z "$username" ]; then
-        echo -e "${RED}Username cannot be empty${NC}"
+    if [ -z "$user_num" ] || [ "$user_num" -eq 0 ] 2>/dev/null; then
+        echo -e "${YELLOW}Cancelled${NC}"
         read -p "Press Enter to continue..."
         return
     fi
 
-    if ! id "$username" &>/dev/null; then
-        echo -e "${RED}User '$username' does not exist${NC}"
+    if ! [[ "$user_num" =~ ^[0-9]+$ ]] || [ "$user_num" -lt 1 ] || [ "$user_num" -gt ${#users[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
         read -p "Press Enter to continue..."
         return
     fi
+
+    local username="${users[$((user_num-1))]}"
 
     echo ""
-    echo -e "${BRIGHT_BLUE}Available shells:${NC}"
+    echo -e "${BRIGHT_BLUE}Select new shell for user ${BRIGHT_CYAN}$username${NC}:"
     echo -e "  ${BRIGHT_GREEN}1)${NC} ${WHITE}/bin/bash${NC}"
     echo -e "  ${BRIGHT_GREEN}2)${NC} ${WHITE}/bin/zsh${NC}"
     echo -e "  ${BRIGHT_GREEN}3)${NC} ${WHITE}/bin/sh${NC}"
@@ -669,27 +810,43 @@ lock_unlock_user() {
     echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 
-    echo -e "${BRIGHT_YELLOW}┌─ Existing Users ─────────────────────────────────────────────┐${NC}"
-    awk -F: '$3 >= 1000 {printf "  '"${BRIGHT_GREEN}"'%-20s'"${NC}"' UID:'"${BRIGHT_CYAN}"'%s'"${NC}"'\n", $1, $3}' /etc/passwd
+    # Get users into array
+    mapfile -t users < <(awk -F: '$3 >= 1000 {print $1}' /etc/passwd)
+
+    if [ ${#users[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No users found (UID >= 1000)${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Select User ────────────────────────────────────────────────┐${NC}"
+    local i=1
+    for user in "${users[@]}"; do
+        local uid=$(id -u "$user")
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %-20s ${DIM}UID:${NC}${BRIGHT_CYAN}%s${NC}\n" "$i" "$user" "$uid"
+        ((i++))
+    done
     echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
     echo ""
 
-    read -p "Enter username: " username
+    read -p "Enter user number (or 0 to cancel): " user_num
 
-    if [ -z "$username" ]; then
-        echo -e "${RED}Username cannot be empty${NC}"
+    if [ -z "$user_num" ] || [ "$user_num" -eq 0 ] 2>/dev/null; then
+        echo -e "${YELLOW}Cancelled${NC}"
         read -p "Press Enter to continue..."
         return
     fi
 
-    if ! id "$username" &>/dev/null; then
-        echo -e "${RED}User '$username' does not exist${NC}"
+    if ! [[ "$user_num" =~ ^[0-9]+$ ]] || [ "$user_num" -lt 1 ] || [ "$user_num" -gt ${#users[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
         read -p "Press Enter to continue..."
         return
     fi
+
+    local username="${users[$((user_num-1))]}"
 
     echo ""
-    echo -e "${BRIGHT_BLUE}Choose action:${NC}"
+    echo -e "${BRIGHT_BLUE}Select action for user ${BRIGHT_CYAN}$username${NC}:${NC}"
     echo -e "  ${BRIGHT_RED}1)${NC} ${WHITE}Lock user account${NC}   ${DIM}(disable login)${NC}"
     echo -e "  ${BRIGHT_GREEN}2)${NC} ${WHITE}Unlock user account${NC} ${DIM}(enable login)${NC}"
     echo ""
