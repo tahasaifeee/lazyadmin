@@ -34,6 +34,7 @@ main_menu() {
         echo -e "  ${GREEN}[2]${NC} User & Group Management"
         echo -e "  ${GREEN}[3]${NC} Disk Management (LVM, RAID, ZFS)"
         echo -e "  ${GREEN}[4]${NC} Package Management"
+        echo -e "  ${GREEN}[5]${NC} Network Tools"
         echo -e "  ${RED}[0]${NC} Exit"
         echo ""
         echo -e "${YELLOW}Press a number key to select:${NC} "
@@ -46,6 +47,7 @@ main_menu() {
             2) user_management_menu ;;
             3) disk_management_menu ;;
             4) package_management_menu ;;
+            5) network_tools_menu ;;
             0) clear; exit 0 ;;
         esac
     done
@@ -174,6 +176,43 @@ package_management_menu() {
             5) search_package ;;
             6) list_installed_packages ;;
             7) clean_package_cache ;;
+            0) return ;;
+        esac
+    done
+}
+
+# Network Tools menu
+network_tools_menu() {
+    while true; do
+        show_header
+        echo -e "${CYAN}${BOLD}NETWORK TOOLS${NC}"
+        echo ""
+        echo -e "  ${GREEN}[1]${NC} Ping Test"
+        echo -e "  ${GREEN}[2]${NC} Traceroute"
+        echo -e "  ${GREEN}[3]${NC} DNS Lookup (dig/nslookup)"
+        echo -e "  ${GREEN}[4]${NC} Check Open Ports (netstat/ss)"
+        echo -e "  ${GREEN}[5]${NC} Test Specific Port (nc)"
+        echo -e "  ${GREEN}[6]${NC} Network Speed Test"
+        echo -e "  ${GREEN}[7]${NC} Flush DNS Cache"
+        echo -e "  ${GREEN}[8]${NC} Restart Network Service"
+        echo -e "  ${GREEN}[9]${NC} View Firewall Rules"
+        echo -e "  ${RED}[0]${NC} Back to Main Menu"
+        echo ""
+        echo -e "${YELLOW}Press a number key:${NC} "
+
+        read -n 1 -s choice
+        echo ""
+
+        case $choice in
+            1) ping_test ;;
+            2) traceroute_test ;;
+            3) dns_lookup ;;
+            4) check_open_ports ;;
+            5) test_specific_port ;;
+            6) network_speed_test ;;
+            7) flush_dns_cache ;;
+            8) restart_network_service ;;
+            9) view_firewall_rules ;;
             0) return ;;
         esac
     done
@@ -727,6 +766,338 @@ clean_package_cache() {
             echo -e "${RED}No supported package manager found${NC}"
             ;;
     esac
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+#=============================================================================
+# NETWORK TOOLS FUNCTIONS
+#=============================================================================
+
+ping_test() {
+    clear
+    echo -e "${CYAN}${BOLD}PING TEST${NC}"
+    echo ""
+
+    read -p "Enter hostname or IP address to ping: " target
+
+    if [ -z "$target" ]; then
+        echo -e "${RED}Target cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    read -p "Number of packets (default: 4): " count
+    count=${count:-4}
+
+    echo ""
+    echo -e "${GREEN}Running: ping -c $count $target${NC}"
+    echo ""
+    ping -c "$count" "$target"
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+traceroute_test() {
+    clear
+    echo -e "${CYAN}${BOLD}TRACEROUTE${NC}"
+    echo ""
+
+    # Check if traceroute is installed
+    if ! command -v traceroute &> /dev/null; then
+        echo -e "${YELLOW}traceroute is not installed.${NC}"
+        echo ""
+        read -p "Would you like to install it? (y/n): " -n 1 install_choice
+        echo ""
+
+        if [[ $install_choice =~ ^[Yy]$ ]]; then
+            PKG_MGR=$(detect_package_manager)
+            case $PKG_MGR in
+                apt) sudo apt install -y traceroute ;;
+                dnf) sudo dnf install -y traceroute ;;
+                yum) sudo yum install -y traceroute ;;
+                *) echo -e "${RED}Could not install traceroute${NC}"; read -p "Press Enter..."; return ;;
+            esac
+        else
+            read -p "Press Enter to continue..."
+            return
+        fi
+    fi
+
+    read -p "Enter hostname or IP address: " target
+
+    if [ -z "$target" ]; then
+        echo -e "${RED}Target cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo ""
+    echo -e "${GREEN}Running: traceroute $target${NC}"
+    echo ""
+    traceroute "$target"
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+dns_lookup() {
+    clear
+    echo -e "${CYAN}${BOLD}DNS LOOKUP${NC}"
+    echo ""
+
+    read -p "Enter domain name to lookup: " domain
+
+    if [ -z "$domain" ]; then
+        echo -e "${RED}Domain cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo ""
+
+    # Try dig first, fallback to nslookup
+    if command -v dig &> /dev/null; then
+        echo -e "${GREEN}Running: dig $domain${NC}"
+        echo ""
+        dig "$domain"
+    elif command -v nslookup &> /dev/null; then
+        echo -e "${GREEN}Running: nslookup $domain${NC}"
+        echo ""
+        nslookup "$domain"
+    else
+        echo -e "${YELLOW}Neither dig nor nslookup is available${NC}"
+        echo ""
+        echo -e "${GREEN}Using host command:${NC}"
+        echo ""
+        host "$domain"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+check_open_ports() {
+    clear
+    echo -e "${CYAN}${BOLD}CHECK OPEN PORTS${NC}"
+    echo ""
+
+    # Try ss first (modern), fallback to netstat
+    if command -v ss &> /dev/null; then
+        echo -e "${GREEN}Listening ports (using ss):${NC}"
+        echo ""
+        sudo ss -tulpn | head -n 30
+    elif command -v netstat &> /dev/null; then
+        echo -e "${GREEN}Listening ports (using netstat):${NC}"
+        echo ""
+        sudo netstat -tulpn | head -n 30
+    else
+        echo -e "${RED}Neither ss nor netstat is available${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+test_specific_port() {
+    clear
+    echo -e "${CYAN}${BOLD}TEST SPECIFIC PORT${NC}"
+    echo ""
+
+    read -p "Enter hostname or IP address: " target
+    read -p "Enter port number: " port
+
+    if [ -z "$target" ] || [ -z "$port" ]; then
+        echo -e "${RED}Target and port cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo ""
+    echo -e "${GREEN}Testing connection to $target:$port${NC}"
+    echo ""
+
+    # Try nc (netcat) first
+    if command -v nc &> /dev/null; then
+        timeout 5 nc -zv "$target" "$port" 2>&1
+        if [ $? -eq 0 ]; then
+            echo -e "${GREEN}✓ Port $port is open${NC}"
+        else
+            echo -e "${RED}✗ Port $port is closed or filtered${NC}"
+        fi
+    else
+        # Fallback to telnet or bash
+        if command -v telnet &> /dev/null; then
+            timeout 5 telnet "$target" "$port" 2>&1 | head -n 5
+        else
+            # Use bash TCP feature
+            timeout 5 bash -c "echo > /dev/tcp/$target/$port" 2>&1
+            if [ $? -eq 0 ]; then
+                echo -e "${GREEN}✓ Port $port is open${NC}"
+            else
+                echo -e "${RED}✗ Port $port is closed or not reachable${NC}"
+            fi
+        fi
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+network_speed_test() {
+    clear
+    echo -e "${CYAN}${BOLD}NETWORK SPEED TEST${NC}"
+    echo ""
+
+    if ! command -v speedtest-cli &> /dev/null; then
+        echo -e "${YELLOW}speedtest-cli is not installed.${NC}"
+        echo ""
+        read -p "Would you like to install it? (y/n): " -n 1 install_choice
+        echo ""
+
+        if [[ $install_choice =~ ^[Yy]$ ]]; then
+            PKG_MGR=$(detect_package_manager)
+            case $PKG_MGR in
+                apt) sudo apt install -y speedtest-cli ;;
+                dnf) sudo dnf install -y speedtest-cli ;;
+                yum) sudo yum install -y speedtest-cli ;;
+                *) echo -e "${RED}Could not install speedtest-cli${NC}"; read -p "Press Enter..."; return ;;
+            esac
+        else
+            read -p "Press Enter to continue..."
+            return
+        fi
+    fi
+
+    echo -e "${GREEN}Running speed test...${NC}"
+    echo -e "${YELLOW}This may take a minute...${NC}"
+    echo ""
+    speedtest-cli
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+flush_dns_cache() {
+    clear
+    echo -e "${CYAN}${BOLD}FLUSH DNS CACHE${NC}"
+    echo ""
+
+    # Detect which DNS caching service is running
+    if systemctl is-active --quiet systemd-resolved; then
+        echo -e "${GREEN}Flushing systemd-resolved DNS cache...${NC}"
+        sudo systemd-resolve --flush-caches 2>/dev/null || sudo resolvectl flush-caches
+        echo -e "${GREEN}✓ DNS cache flushed (systemd-resolved)${NC}"
+    elif systemctl is-active --quiet dnsmasq; then
+        echo -e "${GREEN}Restarting dnsmasq...${NC}"
+        sudo systemctl restart dnsmasq
+        echo -e "${GREEN}✓ DNS cache flushed (dnsmasq)${NC}"
+    elif systemctl is-active --quiet nscd; then
+        echo -e "${GREEN}Restarting nscd...${NC}"
+        sudo systemctl restart nscd
+        echo -e "${GREEN}✓ DNS cache flushed (nscd)${NC}"
+    else
+        echo -e "${YELLOW}No DNS caching service detected.${NC}"
+        echo ""
+        echo -e "${GREEN}Clearing /etc/resolv.conf if using DHCP:${NC}"
+        if command -v dhclient &> /dev/null; then
+            sudo dhclient -r && sudo dhclient
+            echo -e "${GREEN}✓ DHCP renewed${NC}"
+        else
+            echo -e "${YELLOW}No action needed - no DNS cache found${NC}"
+        fi
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+restart_network_service() {
+    clear
+    echo -e "${CYAN}${BOLD}RESTART NETWORK SERVICE${NC}"
+    echo ""
+
+    echo -e "${YELLOW}Available network services:${NC}"
+    echo ""
+    echo "  1) NetworkManager"
+    echo "  2) systemd-networkd"
+    echo "  3) networking (Debian/Ubuntu)"
+    echo "  4) network (RHEL/CentOS)"
+    echo ""
+    read -p "Choose service to restart (1-4): " -n 1 service_choice
+    echo ""
+    echo ""
+
+    case $service_choice in
+        1)
+            if systemctl is-active --quiet NetworkManager; then
+                echo -e "${GREEN}Restarting NetworkManager...${NC}"
+                sudo systemctl restart NetworkManager
+                echo -e "${GREEN}✓ NetworkManager restarted${NC}"
+            else
+                echo -e "${RED}NetworkManager is not running${NC}"
+            fi
+            ;;
+        2)
+            if systemctl is-active --quiet systemd-networkd; then
+                echo -e "${GREEN}Restarting systemd-networkd...${NC}"
+                sudo systemctl restart systemd-networkd
+                echo -e "${GREEN}✓ systemd-networkd restarted${NC}"
+            else
+                echo -e "${RED}systemd-networkd is not running${NC}"
+            fi
+            ;;
+        3)
+            echo -e "${GREEN}Restarting networking service...${NC}"
+            sudo systemctl restart networking 2>/dev/null || sudo service networking restart
+            echo -e "${GREEN}✓ Networking service restarted${NC}"
+            ;;
+        4)
+            echo -e "${GREEN}Restarting network service...${NC}"
+            sudo systemctl restart network 2>/dev/null || sudo service network restart
+            echo -e "${GREEN}✓ Network service restarted${NC}"
+            ;;
+        *)
+            echo -e "${RED}Invalid choice${NC}"
+            ;;
+    esac
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+view_firewall_rules() {
+    clear
+    echo -e "${CYAN}${BOLD}VIEW FIREWALL RULES${NC}"
+    echo ""
+
+    # Check which firewall system is in use
+    if command -v nft &> /dev/null && [ -n "$(sudo nft list ruleset 2>/dev/null)" ]; then
+        echo -e "${GREEN}Firewall: nftables${NC}"
+        echo ""
+        sudo nft list ruleset | head -n 50
+    elif command -v iptables &> /dev/null; then
+        echo -e "${GREEN}Firewall: iptables${NC}"
+        echo ""
+        echo -e "${CYAN}Filter table (INPUT/OUTPUT/FORWARD):${NC}"
+        sudo iptables -L -n -v | head -n 30
+        echo ""
+        echo -e "${CYAN}NAT table:${NC}"
+        sudo iptables -t nat -L -n -v | head -n 20
+    elif command -v firewall-cmd &> /dev/null; then
+        echo -e "${GREEN}Firewall: firewalld${NC}"
+        echo ""
+        sudo firewall-cmd --list-all
+    elif command -v ufw &> /dev/null; then
+        echo -e "${GREEN}Firewall: ufw${NC}"
+        echo ""
+        sudo ufw status verbose
+    else
+        echo -e "${YELLOW}No supported firewall tool found${NC}"
+        echo -e "${YELLOW}(Checked: nftables, iptables, firewalld, ufw)${NC}"
+    fi
 
     echo ""
     read -p "Press Enter to continue..."
