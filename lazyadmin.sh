@@ -343,22 +343,38 @@ show_disk_usage() {
 
 list_users_groups() {
     clear
-    echo -e "${CYAN}${BOLD}USERS (UID >= 1000)${NC}"
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_CYAN}📋 ${WHITE}${BOLD}USERS & GROUPS${NC}                                            ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
-    awk -F: '$3 >= 1000 {printf "%-15s UID:%-6s Shell:%-20s Home:%s\n", $1, $3, $7, $6}' /etc/passwd
+
+    echo -e "${BRIGHT_YELLOW}┌─ System Users (UID >= 1000) ────────────────────────────────┐${NC}"
+    awk -F: '$3 >= 1000 {printf "  '"${BRIGHT_GREEN}"'%-15s'"${NC}"' UID:'"${BRIGHT_CYAN}"'%-6s'"${NC}"' Shell:'"${WHITE}"'%-20s'"${NC}"'\n", $1, $3, $7}' /etc/passwd
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
     echo ""
-    echo -e "${CYAN}${BOLD}GROUPS${NC}"
+
+    echo -e "${BRIGHT_BLUE}┌─ Available Groups ───────────────────────────────────────────┐${NC}"
+    cut -d: -f1 /etc/group | column | sed "s/^/  ${WHITE}/" | sed "s/$/${NC}/"
+    echo -e "${BRIGHT_BLUE}└──────────────────────────────────────────────────────────────┘${NC}"
+
     echo ""
-    cut -d: -f1 /etc/group | column
-    echo ""
-    read -p "Press Enter to continue..."
+    echo -e "${DIM}Press Enter to continue...${NC}"
+    read
 }
 
 create_user() {
     clear
-    echo -e "${CYAN}${BOLD}CREATE USER${NC}"
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_GREEN}➕ ${WHITE}${BOLD}CREATE USER${NC}                                               ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
-    read -p "Enter username: " username
+
+    echo -e "${BRIGHT_YELLOW}┌─ Current Users ──────────────────────────────────────────────┐${NC}"
+    awk -F: '$3 >= 1000 {printf "  '"${BRIGHT_GREEN}"'%-20s'"${NC}"' UID:'"${BRIGHT_CYAN}"'%s'"${NC}"'\n", $1, $3}' /etc/passwd
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter new username: " username
 
     if [ -z "$username" ]; then
         echo -e "${RED}Username cannot be empty${NC}"
@@ -366,21 +382,40 @@ create_user() {
         return
     fi
 
-    sudo useradd -m "$username"
-    if [ $? -eq 0 ]; then
-        echo -e "${GREEN}User '$username' created successfully!${NC}"
-        sudo passwd "$username"
-    else
-        echo -e "${RED}Failed to create user${NC}"
+    # Check if user already exists
+    if id "$username" &>/dev/null; then
+        echo -e "${RED}User '$username' already exists${NC}"
+        read -p "Press Enter to continue..."
+        return
     fi
 
+    echo ""
+    sudo useradd -m "$username"
+    if [ $? -eq 0 ]; then
+        echo -e "${BRIGHT_GREEN}✓ User '$username' created successfully!${NC}"
+        echo ""
+        echo -e "${BRIGHT_CYAN}Setting password for user '$username':${NC}"
+        sudo passwd "$username"
+    else
+        echo -e "${BRIGHT_RED}✗ Failed to create user${NC}"
+    fi
+
+    echo ""
     read -p "Press Enter to continue..."
 }
 
 delete_user() {
     clear
-    echo -e "${CYAN}${BOLD}DELETE USER${NC}"
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_RED}➖ ${WHITE}${BOLD}DELETE USER${NC}                                               ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
+
+    echo -e "${BRIGHT_YELLOW}┌─ Existing Users ─────────────────────────────────────────────┐${NC}"
+    awk -F: '$3 >= 1000 {printf "  '"${BRIGHT_GREEN}"'%-15s'"${NC}"' UID:'"${BRIGHT_CYAN}"'%-6s'"${NC}"' Shell:'"${WHITE}"'%s'"${NC}"'\n", $1, $3, $7}' /etc/passwd
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
     read -p "Enter username to delete: " username
 
     if [ -z "$username" ]; then
@@ -389,7 +424,16 @@ delete_user() {
         return
     fi
 
+    # Check if user exists
+    if ! id "$username" &>/dev/null; then
+        echo -e "${RED}User '$username' does not exist${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo ""
     read -p "Delete home directory? (y/n): " -n 1 delhome
+    echo ""
     echo ""
 
     if [[ $delhome =~ ^[Yy]$ ]]; then
@@ -399,74 +443,203 @@ delete_user() {
     fi
 
     if [ $? -eq 0 ]; then
-        echo -e "${GREEN}User deleted successfully${NC}"
+        echo -e "${BRIGHT_GREEN}✓ User '$username' deleted successfully${NC}"
     else
-        echo -e "${RED}Failed to delete user${NC}"
+        echo -e "${BRIGHT_RED}✗ Failed to delete user${NC}"
     fi
 
+    echo ""
     read -p "Press Enter to continue..."
 }
 
 add_user_to_group() {
     clear
-    echo -e "${CYAN}${BOLD}ADD USER TO GROUP${NC}"
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_BLUE}👤 ${WHITE}${BOLD}ADD USER TO GROUP${NC}                                         ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
+
+    echo -e "${BRIGHT_YELLOW}┌─ Existing Users ─────────────────────────────────────────────┐${NC}"
+    awk -F: '$3 >= 1000 {printf "  '"${BRIGHT_GREEN}"'%-20s'"${NC}"' UID:'"${BRIGHT_CYAN}"'%s'"${NC}"'\n", $1, $3}' /etc/passwd
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_BLUE}┌─ Available Groups ───────────────────────────────────────────┐${NC}"
+    echo -n "  ${WHITE}"
+    cut -d: -f1 /etc/group | head -n 20 | column
+    echo -e "${NC}  ${DIM}(showing first 20 groups)${NC}"
+    echo -e "${BRIGHT_BLUE}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
     read -p "Enter username: " username
+
+    if [ -z "$username" ]; then
+        echo -e "${RED}Username cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    if ! id "$username" &>/dev/null; then
+        echo -e "${RED}User '$username' does not exist${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
     read -p "Enter group name: " groupname
 
+    if [ -z "$groupname" ]; then
+        echo -e "${RED}Group name cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    if ! getent group "$groupname" &>/dev/null; then
+        echo -e "${RED}Group '$groupname' does not exist${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo ""
     sudo usermod -aG "$groupname" "$username"
 
     if [ $? -eq 0 ]; then
-        echo -e "${GREEN}User '$username' added to group '$groupname'${NC}"
+        echo -e "${BRIGHT_GREEN}✓ User '$username' added to group '$groupname'${NC}"
     else
-        echo -e "${RED}Failed to add user to group${NC}"
+        echo -e "${BRIGHT_RED}✗ Failed to add user to group${NC}"
     fi
 
+    echo ""
     read -p "Press Enter to continue..."
 }
 
 remove_user_from_group() {
     clear
-    echo -e "${CYAN}${BOLD}REMOVE USER FROM GROUP${NC}"
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_YELLOW}👥 ${WHITE}${BOLD}REMOVE USER FROM GROUP${NC}                                    ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
+
+    echo -e "${BRIGHT_YELLOW}┌─ Existing Users ─────────────────────────────────────────────┐${NC}"
+    awk -F: '$3 >= 1000 {printf "  '"${BRIGHT_GREEN}"'%-20s'"${NC}"' UID:'"${BRIGHT_CYAN}"'%s'"${NC}"'\n", $1, $3}' /etc/passwd
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_BLUE}┌─ Available Groups ───────────────────────────────────────────┐${NC}"
+    echo -n "  ${WHITE}"
+    cut -d: -f1 /etc/group | head -n 20 | column
+    echo -e "${NC}  ${DIM}(showing first 20 groups)${NC}"
+    echo -e "${BRIGHT_BLUE}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
     read -p "Enter username: " username
+
+    if [ -z "$username" ]; then
+        echo -e "${RED}Username cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    if ! id "$username" &>/dev/null; then
+        echo -e "${RED}User '$username' does not exist${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
     read -p "Enter group name: " groupname
 
+    if [ -z "$groupname" ]; then
+        echo -e "${RED}Group name cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    if ! getent group "$groupname" &>/dev/null; then
+        echo -e "${RED}Group '$groupname' does not exist${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo ""
     sudo gpasswd -d "$username" "$groupname"
 
     if [ $? -eq 0 ]; then
-        echo -e "${GREEN}User removed from group${NC}"
+        echo -e "${BRIGHT_GREEN}✓ User '$username' removed from group '$groupname'${NC}"
     else
-        echo -e "${RED}Failed to remove user from group${NC}"
+        echo -e "${BRIGHT_RED}✗ Failed to remove user from group${NC}"
     fi
 
+    echo ""
     read -p "Press Enter to continue..."
 }
 
 set_password() {
     clear
-    echo -e "${CYAN}${BOLD}SET/RESET PASSWORD${NC}"
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_PURPLE}🔑 ${WHITE}${BOLD}SET/RESET PASSWORD${NC}                                        ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
+
+    echo -e "${BRIGHT_YELLOW}┌─ Existing Users ─────────────────────────────────────────────┐${NC}"
+    awk -F: '$3 >= 1000 {printf "  '"${BRIGHT_GREEN}"'%-20s'"${NC}"' UID:'"${BRIGHT_CYAN}"'%s'"${NC}"'\n", $1, $3}' /etc/passwd
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
     read -p "Enter username: " username
 
+    if [ -z "$username" ]; then
+        echo -e "${RED}Username cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    if ! id "$username" &>/dev/null; then
+        echo -e "${RED}User '$username' does not exist${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo ""
     sudo passwd "$username"
 
+    echo ""
     read -p "Press Enter to continue..."
 }
 
 change_shell() {
     clear
-    echo -e "${CYAN}${BOLD}CHANGE USER SHELL${NC}"
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_CYAN}🐚 ${WHITE}${BOLD}CHANGE USER SHELL${NC}                                         ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
+
+    echo -e "${BRIGHT_YELLOW}┌─ Existing Users ─────────────────────────────────────────────┐${NC}"
+    awk -F: '$3 >= 1000 {printf "  '"${BRIGHT_GREEN}"'%-20s'"${NC}"' Current Shell:'"${WHITE}"'%s'"${NC}"'\n", $1, $7}' /etc/passwd
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
     read -p "Enter username: " username
+
+    if [ -z "$username" ]; then
+        echo -e "${RED}Username cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    if ! id "$username" &>/dev/null; then
+        echo -e "${RED}User '$username' does not exist${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
     echo ""
-    echo "Available shells:"
-    echo "  1) /bin/bash"
-    echo "  2) /bin/zsh"
-    echo "  3) /bin/sh"
-    echo "  4) /bin/fish"
+    echo -e "${BRIGHT_BLUE}Available shells:${NC}"
+    echo -e "  ${BRIGHT_GREEN}1)${NC} ${WHITE}/bin/bash${NC}"
+    echo -e "  ${BRIGHT_GREEN}2)${NC} ${WHITE}/bin/zsh${NC}"
+    echo -e "  ${BRIGHT_GREEN}3)${NC} ${WHITE}/bin/sh${NC}"
+    echo -e "  ${BRIGHT_GREEN}4)${NC} ${WHITE}/bin/fish${NC}"
     echo ""
     read -p "Choose shell (1-4): " -n 1 shell_choice
+    echo ""
     echo ""
 
     case $shell_choice in
@@ -474,54 +647,79 @@ change_shell() {
         2) newshell="/bin/zsh" ;;
         3) newshell="/bin/sh" ;;
         4) newshell="/bin/fish" ;;
-        *) echo -e "${RED}Invalid choice${NC}"; read -p "Press Enter..."; return ;;
+        *) echo -e "${BRIGHT_RED}✗ Invalid choice${NC}"; read -p "Press Enter..."; return ;;
     esac
 
     sudo chsh -s "$newshell" "$username"
 
     if [ $? -eq 0 ]; then
-        echo -e "${GREEN}Shell changed to $newshell${NC}"
+        echo -e "${BRIGHT_GREEN}✓ Shell changed to $newshell for user '$username'${NC}"
     else
-        echo -e "${RED}Failed to change shell${NC}"
+        echo -e "${BRIGHT_RED}✗ Failed to change shell${NC}"
     fi
 
+    echo ""
     read -p "Press Enter to continue..."
 }
 
 lock_unlock_user() {
     clear
-    echo -e "${CYAN}${BOLD}LOCK/UNLOCK USER${NC}"
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_RED}🔒 ${WHITE}${BOLD}LOCK/UNLOCK USER${NC}                                          ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
+
+    echo -e "${BRIGHT_YELLOW}┌─ Existing Users ─────────────────────────────────────────────┐${NC}"
+    awk -F: '$3 >= 1000 {printf "  '"${BRIGHT_GREEN}"'%-20s'"${NC}"' UID:'"${BRIGHT_CYAN}"'%s'"${NC}"'\n", $1, $3}' /etc/passwd
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
     read -p "Enter username: " username
+
+    if [ -z "$username" ]; then
+        echo -e "${RED}Username cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    if ! id "$username" &>/dev/null; then
+        echo -e "${RED}User '$username' does not exist${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
     echo ""
-    echo "  1) Lock user account"
-    echo "  2) Unlock user account"
+    echo -e "${BRIGHT_BLUE}Choose action:${NC}"
+    echo -e "  ${BRIGHT_RED}1)${NC} ${WHITE}Lock user account${NC}   ${DIM}(disable login)${NC}"
+    echo -e "  ${BRIGHT_GREEN}2)${NC} ${WHITE}Unlock user account${NC} ${DIM}(enable login)${NC}"
     echo ""
     read -p "Choose action (1-2): " -n 1 action
+    echo ""
     echo ""
 
     case $action in
         1)
             sudo usermod -L "$username"
             if [ $? -eq 0 ]; then
-                echo -e "${GREEN}User locked${NC}"
+                echo -e "${BRIGHT_GREEN}✓ User '$username' locked successfully${NC}"
             else
-                echo -e "${RED}Failed to lock user${NC}"
+                echo -e "${BRIGHT_RED}✗ Failed to lock user${NC}"
             fi
             ;;
         2)
             sudo usermod -U "$username"
             if [ $? -eq 0 ]; then
-                echo -e "${GREEN}User unlocked${NC}"
+                echo -e "${BRIGHT_GREEN}✓ User '$username' unlocked successfully${NC}"
             else
-                echo -e "${RED}Failed to unlock user${NC}"
+                echo -e "${BRIGHT_RED}✗ Failed to unlock user${NC}"
             fi
             ;;
         *)
-            echo -e "${RED}Invalid choice${NC}"
+            echo -e "${BRIGHT_RED}✗ Invalid choice${NC}"
             ;;
     esac
 
+    echo ""
     read -p "Press Enter to continue..."
 }
 
