@@ -29,7 +29,8 @@ A fast and lightweight terminal UI (TUI) for Linux system administration, built 
   - **Mount Operations**: Mount/unmount with /etc/fstab management
 - **Fast & Lightweight**: Instant startup, minimal resource usage
 - **No Compilation Required**: Just bash scripts
-- **Easy Navigation**: Menu-driven interface using arrow keys
+- **Easy Navigation**: Single-keypress navigation - just press a number, no Enter needed!
+- **No External Dependencies**: Pure bash with no dialog/whiptail required
 
 ## Screenshots
 
@@ -60,8 +61,8 @@ lazyadmin
 
 **Requirements:**
 - Bash 4.0+
-- `dialog` or `whiptail` (auto-installed)
 - systemd (for service management)
+- No external dependencies - pure bash!
 
 ## Updating LazyAdmin
 
@@ -82,11 +83,10 @@ lazyadmin
 ```
 
 **Navigation:**
-- **Arrow keys (↑ ↓)** to navigate through options
-- **Type the number** of your choice (e.g., press `1`, `2`, `3`)
-- **Press Enter** to confirm and select (IMPORTANT: you must press Enter after typing a number)
-- **Esc** to go back to previous menu
-- **0** to exit current menu or quit
+- **Just press the number key** (e.g., press `1`, `2`, `3`) - option executes instantly!
+- **No Enter key needed** - single keypress navigation
+- **Press `0`** to go back or exit current menu
+- Simple, clean terminal menus with color coding
 
 ### Main Menu Structure
 
