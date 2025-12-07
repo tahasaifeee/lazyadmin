@@ -27,6 +27,16 @@ A fast and lightweight terminal UI (TUI) for Linux system administration, built 
   - Search for packages
   - List installed packages
   - Clean package cache
+- **Network Tools**: Comprehensive networking utilities
+  - Ping test with customizable packet count
+  - Traceroute for network path analysis
+  - DNS lookup (dig/nslookup/host)
+  - Check open ports (ss/netstat)
+  - Test specific port connectivity
+  - Network speed test (speedtest-cli)
+  - Flush DNS cache (systemd-resolved/dnsmasq/nscd)
+  - Restart network services
+  - View firewall rules (nftables/iptables/firewalld/ufw)
 - **Disk Management (LVM, RAID, ZFS)**: Complete storage administration
   - **LVM**: Create/manage Physical Volumes, Volume Groups, Logical Volumes
   - **RAID**: Configure and manage mdadm RAID arrays (0, 1, 5, 6, 10)
@@ -44,11 +54,12 @@ A fast and lightweight terminal UI (TUI) for Linux system administration, built 
 The interface features:
 - Clean terminal-based menus with color coding
 - Single-keypress navigation (no Enter needed!)
-- Four main sections:
+- Five main sections:
   - **System Information**: System Info, Services, Processes, Disk Usage
   - **User & Group Management**: 8 different user/group operations
   - **Disk Management**: LVM, RAID, ZFS, Partitioning, Filesystems, Mount operations
   - **Package Management**: 7 package operations with auto-detection (apt/yum/dnf)
+  - **Network Tools**: 9 networking utilities for diagnostics and configuration
 - Real-time data display
 - Interactive prompts for user actions
 - No commands required - everything through menus
@@ -133,6 +144,17 @@ LazyAdmin Main Menu
 │   ├── [5] Search Package           - Find packages by name
 │   ├── [6] List Installed Packages  - Show installed software
 │   └── [7] Clean Package Cache      - Free up disk space
+│
+├── [5] Network Tools
+│   ├── [1] Ping Test                - Test connectivity with customizable packet count
+│   ├── [2] Traceroute               - Trace network path to destination
+│   ├── [3] DNS Lookup               - Resolve domain names (dig/nslookup/host)
+│   ├── [4] Check Open Ports         - View listening ports (ss/netstat)
+│   ├── [5] Test Specific Port       - Check if a port is open (nc/telnet/bash)
+│   ├── [6] Network Speed Test       - Test download/upload speeds (speedtest-cli)
+│   ├── [7] Flush DNS Cache          - Clear DNS cache (systemd-resolved/dnsmasq/nscd)
+│   ├── [8] Restart Network Service  - Restart NetworkManager/systemd-networkd/networking
+│   └── [9] View Firewall Rules      - Display firewall configuration (nftables/iptables/firewalld/ufw)
 │
 └── [0] Exit
 ```
@@ -222,6 +244,40 @@ Comprehensive disk and storage management:
 - Mount/unmount with guided prompts
 - Auto-create mount points
 - Edit and view /etc/fstab safely
+
+### Network Tools
+
+Complete networking diagnostic and configuration toolkit:
+
+**Connectivity Testing:**
+- Ping with customizable packet count for connectivity testing
+- Traceroute for network path analysis and troubleshooting
+- Test specific ports using nc/telnet/bash TCP features
+
+**DNS Operations:**
+- DNS lookup using dig, nslookup, or host commands
+- Flush DNS cache (auto-detects systemd-resolved, dnsmasq, or nscd)
+- DHCP renewal when applicable
+
+**Port and Network Information:**
+- View all open/listening ports using ss or netstat
+- Display active connections and services
+- Test specific port connectivity with timeout
+
+**Network Services:**
+- Restart NetworkManager, systemd-networkd, or legacy networking services
+- Support for various network service implementations across distributions
+- Service status checking before restart
+
+**Firewall Management:**
+- View firewall rules from nftables, iptables, firewalld, or ufw
+- Display both filter and NAT tables for iptables
+- Comprehensive ruleset display
+
+**Performance Testing:**
+- Network speed test using speedtest-cli
+- Optional installation of speedtest-cli if not present
+- Download and upload speed measurements
 
 ## Why LazyAdmin?
 
