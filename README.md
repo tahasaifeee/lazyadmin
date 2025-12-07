@@ -1,6 +1,6 @@
 # LazyAdmin
 
-A fast and lightweight terminal UI (TUI) for Linux system administration, built with Bash and Dialog/Whiptail. LazyAdmin provides an intuitive, menu-driven interface for managing your Linux system without needing to remember complex commands.
+A fast and lightweight terminal UI (TUI) for Linux system administration, built with pure Bash. LazyAdmin provides an intuitive, menu-driven interface with single-keypress navigation for managing your Linux system without needing to remember complex commands.
 
 ## Features
 
@@ -229,10 +229,10 @@ Managing Linux systems requires remembering numerous commands and their options.
 
 1. **No Learning Curve**: Menu-driven interface, no need to remember commands
 2. **Fast & Responsive**: Pure bash with instant startup
-3. **Lightweight**: Minimal dependencies, runs anywhere
+3. **Lightweight**: Zero dependencies, runs anywhere with Bash 4.0+
 4. **Complete Control**: All essential system administration tasks in one place
 5. **Safe Operations**: Interactive prompts before destructive actions
-6. **Universal**: Works on any Linux distribution with bash and dialog/whiptail
+6. **Universal**: Works on any Linux distribution with Bash 4.0+
 
 ## Performance Benefits
 
@@ -241,7 +241,7 @@ Managing Linux systems requires remembering numerous commands and their options.
 - ✅ **Lower Memory Usage**: Pure bash uses minimal resources
 - ✅ **Smaller Footprint**: Single bash script vs compiled binary
 - ✅ **No Build Dependencies**: No need for Go toolchain
-- ✅ **Faster Menu Navigation**: Direct dialog/whiptail rendering
+- ✅ **Zero External Dependencies**: No dialog, whiptail, or other tools required
 
 ## Contributing
 
@@ -254,5 +254,5 @@ See the LICENSE file for details.
 ## Acknowledgments
 
 - Inspired by [Lazygit](https://github.com/jesseduffield/lazygit)
-- Built with standard Linux tools: bash, dialog/whiptail
+- Built with pure Bash - no external dependencies
 - Designed for system administrators who value simplicity and speed
