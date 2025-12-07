@@ -174,7 +174,7 @@ disk_management_menu() {
             3) manage_zfs ;;
             4) manage_partitioning ;;
             5) manage_filesystems ;;
-            6) echo "Mount/Unmount - Feature coming soon"; read -p "Press Enter to continue..." ;;
+            6) manage_mount_operations ;;
             7) view_disk_info ;;
             0) return ;;
         esac
@@ -3237,6 +3237,494 @@ tune_filesystem() {
 
     if [ $? -eq 0 ] && [ "$tune_option" != "4" ] && [ "$tune_option" != "5" ]; then
         echo -e "${BRIGHT_GREEN}✓ Filesystem tuned successfully${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Mount/Unmount Operations
+manage_mount_operations() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_BLUE}🔌 ${WHITE}${BOLD}MOUNT/UNMOUNT OPERATIONS${NC}                                  ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_CYAN}Mount Operations:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} View Mounted Filesystems ${DIM}(df/mount)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} Mount Filesystem ${DIM}(wizard)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[3]${NC} Unmount Filesystem ${DIM}(wizard)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[4]${NC} View /etc/fstab ${DIM}(boot mounts)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[5]${NC} Add Entry to /etc/fstab ${DIM}(wizard)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[6]${NC} Remove Entry from /etc/fstab"
+    echo -e "  ${BRIGHT_GREEN}[7]${NC} Edit /etc/fstab ${DIM}(manual)${NC}"
+    echo -e "  ${BRIGHT_RED}[0]${NC} Back"
+    echo ""
+    echo -e "${DIM}${BRIGHT_CYAN}───────────────────────────────────────────────────────────────${NC}"
+    echo -e "${BRIGHT_YELLOW}❯${NC} Press a number key: "
+
+    read -n 1 -s choice
+    echo ""
+
+    case $choice in
+        1) view_mounted_filesystems ;;
+        2) mount_filesystem_wizard ;;
+        3) unmount_filesystem_wizard ;;
+        4) view_fstab ;;
+        5) add_fstab_entry_wizard ;;
+        6) remove_fstab_entry ;;
+        7) edit_fstab_manual ;;
+        0) return ;;
+    esac
+
+    manage_mount_operations
+}
+
+# View Mounted Filesystems
+view_mounted_filesystems() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_CYAN}📊 ${WHITE}${BOLD}MOUNTED FILESYSTEMS${NC}                                       ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_YELLOW}┌─ Disk Usage ─────────────────────────────────────────────────┐${NC}"
+    df -h | grep -v "tmpfs\|devtmpfs\|loop"
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+
+    echo ""
+    echo -e "${BRIGHT_YELLOW}┌─ Mount Details ──────────────────────────────────────────────┐${NC}"
+    mount | grep -v "tmpfs\|devtmpfs\|loop" | column -t
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Mount Filesystem Wizard
+mount_filesystem_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_GREEN}🔌 ${WHITE}${BOLD}MOUNT FILESYSTEM${NC}                                          ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List unmounted partitions with filesystems
+    mapfile -t partitions < <(lsblk -pno NAME,SIZE,FSTYPE,MOUNTPOINT | grep -E 'part|lvm' | awk '$3 != "" && $3 != "swap" && $4 == "" {print $1 " (" $2 ") [" $3 "]"}')
+
+    if [ ${#partitions[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No unmounted filesystems found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Unmounted Filesystems ──────────────────────────────────────┐${NC}"
+    local i=1
+    for partition in "${partitions[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$partition"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter partition number (0 to cancel): " part_num
+
+    if [ -z "$part_num" ] || [ "$part_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$part_num" =~ ^[0-9]+$ ]] || [ "$part_num" -lt 1 ] || [ "$part_num" -gt ${#partitions[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local partition_path=$(echo "${partitions[$((part_num-1))]}" | awk '{print $1}')
+    local fs_type=$(lsblk -no FSTYPE "$partition_path")
+
+    # Get mount point
+    echo ""
+    read -p "Enter mount point (e.g., /mnt/data): " mount_point
+
+    if [ -z "$mount_point" ]; then
+        echo -e "${RED}Mount point cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Create mount point if it doesn't exist
+    if [ ! -d "$mount_point" ]; then
+        echo ""
+        read -p "Mount point doesn't exist. Create it? (y/n): " -n 1 create_mp
+        echo ""
+
+        if [[ $create_mp =~ ^[Yy]$ ]]; then
+            sudo mkdir -p "$mount_point"
+            if [ $? -ne 0 ]; then
+                echo -e "${RED}Failed to create mount point${NC}"
+                read -p "Press Enter to continue..."
+                return
+            fi
+            echo -e "${BRIGHT_GREEN}✓ Created mount point${NC}"
+        else
+            echo -e "${YELLOW}Cancelled${NC}"
+            read -p "Press Enter to continue..."
+            return
+        fi
+    fi
+
+    # Mount filesystem
+    echo ""
+    echo -e "${BRIGHT_CYAN}Mounting $partition_path to $mount_point...${NC}"
+
+    sudo mount "$partition_path" "$mount_point"
+
+    if [ $? -eq 0 ]; then
+        echo -e "${BRIGHT_GREEN}✓ Filesystem mounted successfully${NC}"
+        df -h "$mount_point"
+    else
+        echo -e "${BRIGHT_RED}✗ Failed to mount filesystem${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Unmount Filesystem Wizard
+unmount_filesystem_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_RED}🔌 ${WHITE}${BOLD}UNMOUNT FILESYSTEM${NC}                                        ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List mounted partitions (excluding system mounts)
+    mapfile -t mounts < <(mount | grep -E '/dev/(sd|hd|nvme|vd|mapper)' | awk '{print $1 " on " $3 " type " $5}')
+
+    if [ ${#mounts[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No user-mounted filesystems found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Mounted Filesystems ────────────────────────────────────────┐${NC}"
+    local i=1
+    for mount_entry in "${mounts[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$mount_entry"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter mount number (0 to cancel): " mount_num
+
+    if [ -z "$mount_num" ] || [ "$mount_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$mount_num" =~ ^[0-9]+$ ]] || [ "$mount_num" -lt 1 ] || [ "$mount_num" -gt ${#mounts[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local mount_info="${mounts[$((mount_num-1))]}"
+    local mount_point=$(echo "$mount_info" | awk '{print $3}')
+
+    # Confirm
+    echo ""
+    echo -e "${BRIGHT_YELLOW}Unmount: ${BRIGHT_CYAN}$mount_point${NC}"
+    read -p "Continue? (y/n): " -n 1 confirm
+    echo ""
+
+    if ! [[ $confirm =~ ^[Yy]$ ]]; then
+        echo -e "${YELLOW}Cancelled${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Unmount
+    echo ""
+    echo -e "${BRIGHT_CYAN}Unmounting...${NC}"
+
+    sudo umount "$mount_point"
+
+    if [ $? -eq 0 ]; then
+        echo -e "${BRIGHT_GREEN}✓ Filesystem unmounted successfully${NC}"
+    else
+        echo -e "${BRIGHT_RED}✗ Failed to unmount${NC}"
+        echo -e "${YELLOW}Tip: Check if files are in use (lsof $mount_point)${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# View /etc/fstab
+view_fstab() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_CYAN}📄 ${WHITE}${BOLD}/etc/fstab${NC}                                                ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_YELLOW}┌─ /etc/fstab Contents ────────────────────────────────────────┐${NC}"
+    cat -n /etc/fstab
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Add Entry to /etc/fstab Wizard
+add_fstab_entry_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_GREEN}➕ ${WHITE}${BOLD}ADD /etc/fstab ENTRY${NC}                                      ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List all partitions with filesystems
+    mapfile -t partitions < <(lsblk -pno NAME,SIZE,FSTYPE,UUID | grep -E 'part|lvm' | awk '$3 != "" && $3 != "swap" {print $1 " (" $2 ") [" $3 "] UUID=" $4}')
+
+    if [ ${#partitions[@]} -eq 0 ]; then
+        echo -e "${RED}No partitions with filesystems found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Partitions ───────────────────────────────────────┐${NC}"
+    local i=1
+    for partition in "${partitions[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$partition"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter partition number (0 to cancel): " part_num
+
+    if [ -z "$part_num" ] || [ "$part_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$part_num" =~ ^[0-9]+$ ]] || [ "$part_num" -lt 1 ] || [ "$part_num" -gt ${#partitions[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local partition_info="${partitions[$((part_num-1))]}"
+    local partition_path=$(echo "$partition_info" | awk '{print $1}')
+    local uuid=$(lsblk -no UUID "$partition_path")
+    local fs_type=$(lsblk -no FSTYPE "$partition_path")
+
+    echo ""
+    echo -e "${BRIGHT_CYAN}Device: ${WHITE}$partition_path${NC}"
+    echo -e "${BRIGHT_CYAN}UUID: ${WHITE}$uuid${NC}"
+    echo -e "${BRIGHT_CYAN}Filesystem: ${WHITE}$fs_type${NC}"
+    echo ""
+
+    # Get mount point
+    read -p "Enter mount point (e.g., /mnt/data): " mount_point
+
+    if [ -z "$mount_point" ]; then
+        echo -e "${RED}Mount point cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Create mount point if needed
+    if [ ! -d "$mount_point" ]; then
+        sudo mkdir -p "$mount_point"
+    fi
+
+    # Get mount options
+    echo ""
+    echo -e "${BRIGHT_CYAN}Common mount options:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} defaults ${DIM}(rw,suid,dev,exec,auto,nouser,async)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} defaults,noatime ${DIM}(performance optimization)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[3]${NC} defaults,nofail ${DIM}(boot even if device missing)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[4]${NC} Custom"
+    echo ""
+    read -p "Select mount options (1-4): " opt_choice
+
+    local mount_opts="defaults"
+    case $opt_choice in
+        1) mount_opts="defaults" ;;
+        2) mount_opts="defaults,noatime" ;;
+        3) mount_opts="defaults,nofail" ;;
+        4) read -p "Enter custom options: " mount_opts ;;
+        *) mount_opts="defaults" ;;
+    esac
+
+    # Get dump and pass values
+    local dump=0
+    local pass=2
+
+    # Create fstab entry
+    local fstab_entry="UUID=$uuid  $mount_point  $fs_type  $mount_opts  $dump  $pass"
+
+    echo ""
+    echo -e "${BRIGHT_YELLOW}┌─ fstab Entry ────────────────────────────────────────────────┐${NC}"
+    echo -e "${WHITE}$fstab_entry${NC}"
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_RED}⚠  WARNING: Incorrect fstab entries can prevent system boot!${NC}"
+    read -p "Add this entry to /etc/fstab? (y/n): " -n 1 confirm
+    echo ""
+
+    if ! [[ $confirm =~ ^[Yy]$ ]]; then
+        echo -e "${YELLOW}Cancelled${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Backup fstab
+    sudo cp /etc/fstab /etc/fstab.backup.$(date +%Y%m%d%H%M%S)
+
+    # Add entry
+    echo "$fstab_entry" | sudo tee -a /etc/fstab > /dev/null
+
+    if [ $? -eq 0 ]; then
+        echo -e "${BRIGHT_GREEN}✓ Entry added to /etc/fstab${NC}"
+        echo -e "${BRIGHT_CYAN}Backup created: /etc/fstab.backup.*${NC}"
+
+        echo ""
+        read -p "Test mount now? (y/n): " -n 1 test_mount
+        echo ""
+
+        if [[ $test_mount =~ ^[Yy]$ ]]; then
+            sudo mount -a
+            if [ $? -eq 0 ]; then
+                echo -e "${BRIGHT_GREEN}✓ All filesystems mounted successfully${NC}"
+            else
+                echo -e "${BRIGHT_RED}✗ Mount failed - check /etc/fstab${NC}"
+            fi
+        fi
+    else
+        echo -e "${BRIGHT_RED}✗ Failed to add entry${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Remove Entry from /etc/fstab
+remove_fstab_entry() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_RED}➖ ${WHITE}${BOLD}REMOVE /etc/fstab ENTRY${NC}                                   ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # Show fstab with line numbers (excluding comments and empty lines)
+    mapfile -t entries < <(grep -v '^#' /etc/fstab | grep -v '^$' | nl)
+
+    if [ ${#entries[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No entries in /etc/fstab${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ /etc/fstab Entries ─────────────────────────────────────────┐${NC}"
+    for entry in "${entries[@]}"; do
+        echo -e "  ${BRIGHT_GREEN}$entry${NC}"
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter line number to remove (0 to cancel): " line_num
+
+    if [ -z "$line_num" ] || [ "$line_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$line_num" =~ ^[0-9]+$ ]] || [ "$line_num" -lt 1 ] || [ "$line_num" -gt ${#entries[@]} ]; then
+        echo -e "${RED}Invalid line number${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local entry_to_remove=$(grep -v '^#' /etc/fstab | grep -v '^$' | sed -n "${line_num}p")
+
+    echo ""
+    echo -e "${BRIGHT_YELLOW}Entry to remove:${NC}"
+    echo -e "${BRIGHT_RED}$entry_to_remove${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_RED}⚠  WARNING: Removing entries can affect system boot!${NC}"
+    read -p "Type 'yes' to confirm removal: " confirm
+
+    if [ "$confirm" != "yes" ]; then
+        echo -e "${YELLOW}Cancelled${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Backup fstab
+    sudo cp /etc/fstab /etc/fstab.backup.$(date +%Y%m%d%H%M%S)
+
+    # Remove entry
+    sudo sed -i "/^$(echo "$entry_to_remove" | sed 's/[\/&]/\\&/g')/d" /etc/fstab
+
+    if [ $? -eq 0 ]; then
+        echo -e "${BRIGHT_GREEN}✓ Entry removed from /etc/fstab${NC}"
+        echo -e "${BRIGHT_CYAN}Backup created: /etc/fstab.backup.*${NC}"
+    else
+        echo -e "${BRIGHT_RED}✗ Failed to remove entry${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Edit /etc/fstab Manually
+edit_fstab_manual() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_YELLOW}✏ ${WHITE}${BOLD}EDIT /etc/fstab${NC}                                           ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_RED}⚠  WARNING: Incorrect fstab entries can prevent system boot!${NC}"
+    echo ""
+    read -p "Continue with editing /etc/fstab? (y/n): " -n 1 confirm
+    echo ""
+
+    if ! [[ $confirm =~ ^[Yy]$ ]]; then
+        echo -e "${YELLOW}Cancelled${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Backup fstab
+    sudo cp /etc/fstab /etc/fstab.backup.$(date +%Y%m%d%H%M%S)
+    echo -e "${BRIGHT_CYAN}Backup created: /etc/fstab.backup.*${NC}"
+
+    # Edit with default editor
+    echo ""
+    echo -e "${BRIGHT_CYAN}Opening /etc/fstab in editor...${NC}"
+    sleep 1
+
+    sudo ${EDITOR:-nano} /etc/fstab
+
+    echo ""
+    echo -e "${BRIGHT_GREEN}✓ Edit session completed${NC}"
+
+    read -p "Test mount all filesystems? (y/n): " -n 1 test_mount
+    echo ""
+
+    if [[ $test_mount =~ ^[Yy]$ ]]; then
+        sudo mount -a
+        if [ $? -eq 0 ]; then
+            echo -e "${BRIGHT_GREEN}✓ All filesystems mounted successfully${NC}"
+        else
+            echo -e "${BRIGHT_RED}✗ Mount failed - check /etc/fstab for errors${NC}"
+            echo -e "${BRIGHT_CYAN}Restore backup if needed: sudo cp /etc/fstab.backup.* /etc/fstab${NC}"
+        fi
     fi
 
     echo ""
