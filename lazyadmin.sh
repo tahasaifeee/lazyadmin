@@ -172,7 +172,7 @@ disk_management_menu() {
             1) manage_lvm ;;
             2) manage_raid ;;
             3) manage_zfs ;;
-            4) echo "Disk Partitioning - Feature coming soon"; read -p "Press Enter to continue..." ;;
+            4) manage_partitioning ;;
             5) echo "Filesystem Operations - Feature coming soon"; read -p "Press Enter to continue..." ;;
             6) echo "Mount/Unmount - Feature coming soon"; read -p "Press Enter to continue..." ;;
             7) view_disk_info ;;
@@ -2265,6 +2265,383 @@ import_export_pool() {
             ;;
         0) return ;;
     esac
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Disk Partitioning
+manage_partitioning() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_BLUE}🔧 ${WHITE}${BOLD}DISK PARTITIONING${NC}                                         ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_CYAN}Partitioning Operations:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} List Disks & Partitions ${DIM}(lsblk)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} Partition Disk ${DIM}(fdisk - wizard)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[3]${NC} Partition Disk ${DIM}(parted - wizard)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[4]${NC} View Partition Details ${DIM}(detailed info)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[5]${NC} Delete Partition ${DIM}(wizard)${NC}"
+    echo -e "  ${BRIGHT_RED}[0]${NC} Back"
+    echo ""
+    echo -e "${DIM}${BRIGHT_CYAN}───────────────────────────────────────────────────────────────${NC}"
+    echo -e "${BRIGHT_YELLOW}❯${NC} Press a number key: "
+
+    read -n 1 -s choice
+    echo ""
+
+    case $choice in
+        1) list_disks_partitions ;;
+        2) partition_fdisk_wizard ;;
+        3) partition_parted_wizard ;;
+        4) view_partition_details ;;
+        5) delete_partition_wizard ;;
+        0) return ;;
+    esac
+
+    manage_partitioning
+}
+
+# List Disks & Partitions
+list_disks_partitions() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_CYAN}💿 ${WHITE}${BOLD}DISKS & PARTITIONS${NC}                                        ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_YELLOW}┌─ Block Devices ──────────────────────────────────────────────┐${NC}"
+    lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT,MODEL
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Partition Disk with fdisk Wizard
+partition_fdisk_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_GREEN}🔧 ${WHITE}${BOLD}PARTITION DISK (fdisk)${NC}                                    ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List available disks
+    mapfile -t disks < <(lsblk -dpno NAME,SIZE,TYPE | grep disk | awk '{print $1 " (" $2 ")"}')
+
+    if [ ${#disks[@]} -eq 0 ]; then
+        echo -e "${RED}No disks found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Disks ────────────────────────────────────────────┐${NC}"
+    local i=1
+    for disk in "${disks[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$disk"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter disk number (0 to cancel): " disk_num
+
+    if [ -z "$disk_num" ] || [ "$disk_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$disk_num" =~ ^[0-9]+$ ]] || [ "$disk_num" -lt 1 ] || [ "$disk_num" -gt ${#disks[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local disk_path=$(echo "${disks[$((disk_num-1))]}" | awk '{print $1}')
+
+    # Show current partition table
+    echo ""
+    echo -e "${BRIGHT_CYAN}Current partition table for $disk_path:${NC}"
+    sudo fdisk -l "$disk_path"
+
+    echo ""
+    echo -e "${BRIGHT_RED}⚠  WARNING: Incorrect partitioning can result in data loss!${NC}"
+    read -p "Continue with fdisk on $disk_path? (y/n): " -n 1 confirm
+    echo ""
+
+    if ! [[ $confirm =~ ^[Yy]$ ]]; then
+        echo -e "${YELLOW}Cancelled${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Launch fdisk interactively
+    echo ""
+    echo -e "${BRIGHT_CYAN}Launching fdisk...${NC}"
+    echo -e "${DIM}Common commands: p(print), n(new), d(delete), t(type), w(write), q(quit)${NC}"
+    echo ""
+    sleep 2
+
+    sudo fdisk "$disk_path"
+
+    echo ""
+    echo -e "${BRIGHT_GREEN}✓ fdisk session completed${NC}"
+    read -p "Press Enter to continue..."
+}
+
+# Partition Disk with parted Wizard
+partition_parted_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_GREEN}🔧 ${WHITE}${BOLD}PARTITION DISK (parted)${NC}                                   ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # Check if parted is installed
+    if ! command -v parted &> /dev/null; then
+        echo -e "${YELLOW}parted not installed.${NC}"
+        echo ""
+        read -p "Would you like to install parted? (y/n): " -n 1 install_choice
+        echo ""
+
+        if [[ $install_choice =~ ^[Yy]$ ]]; then
+            PKG_MGR=$(detect_package_manager)
+            case $PKG_MGR in
+                apt) sudo apt install -y parted ;;
+                dnf) sudo dnf install -y parted ;;
+                yum) sudo yum install -y parted ;;
+                *) echo -e "${RED}Could not install parted${NC}"; read -p "Press Enter..."; return ;;
+            esac
+        else
+            read -p "Press Enter to continue..."
+            return
+        fi
+    fi
+
+    # List available disks
+    mapfile -t disks < <(lsblk -dpno NAME,SIZE,TYPE | grep disk | awk '{print $1 " (" $2 ")"}')
+
+    if [ ${#disks[@]} -eq 0 ]; then
+        echo -e "${RED}No disks found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Disks ────────────────────────────────────────────┐${NC}"
+    local i=1
+    for disk in "${disks[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$disk"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter disk number (0 to cancel): " disk_num
+
+    if [ -z "$disk_num" ] || [ "$disk_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$disk_num" =~ ^[0-9]+$ ]] || [ "$disk_num" -lt 1 ] || [ "$disk_num" -gt ${#disks[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local disk_path=$(echo "${disks[$((disk_num-1))]}" | awk '{print $1}')
+
+    # Show current partition table
+    echo ""
+    echo -e "${BRIGHT_CYAN}Current partition table for $disk_path:${NC}"
+    sudo parted "$disk_path" print
+
+    echo ""
+    echo -e "${BRIGHT_RED}⚠  WARNING: Incorrect partitioning can result in data loss!${NC}"
+    read -p "Continue with parted on $disk_path? (y/n): " -n 1 confirm
+    echo ""
+
+    if ! [[ $confirm =~ ^[Yy]$ ]]; then
+        echo -e "${YELLOW}Cancelled${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Launch parted interactively
+    echo ""
+    echo -e "${BRIGHT_CYAN}Launching parted...${NC}"
+    echo -e "${DIM}Common commands: print, mklabel, mkpart, rm, quit${NC}"
+    echo ""
+    sleep 2
+
+    sudo parted "$disk_path"
+
+    echo ""
+    echo -e "${BRIGHT_GREEN}✓ parted session completed${NC}"
+    read -p "Press Enter to continue..."
+}
+
+# View Partition Details
+view_partition_details() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_CYAN}📊 ${WHITE}${BOLD}PARTITION DETAILS${NC}                                         ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List all partitions
+    mapfile -t partitions < <(lsblk -pno NAME,SIZE,TYPE | grep part | awk '{print $1 " (" $2 ")"}')
+
+    if [ ${#partitions[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No partitions found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Partitions ───────────────────────────────────────┐${NC}"
+    local i=1
+    for partition in "${partitions[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$partition"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter partition number to view details (0 to cancel): " part_num
+
+    if [ -z "$part_num" ] || [ "$part_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$part_num" =~ ^[0-9]+$ ]] || [ "$part_num" -lt 1 ] || [ "$part_num" -gt ${#partitions[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local partition_path=$(echo "${partitions[$((part_num-1))]}" | awk '{print $1}')
+
+    echo ""
+    echo -e "${BRIGHT_CYAN}Detailed information for $partition_path:${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_YELLOW}Block device info:${NC}"
+    lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT,UUID,LABEL "$partition_path"
+
+    echo ""
+    echo -e "${BRIGHT_YELLOW}Filesystem info:${NC}"
+    sudo blkid "$partition_path"
+
+    if command -v parted &> /dev/null; then
+        echo ""
+        echo -e "${BRIGHT_YELLOW}Partition table info:${NC}"
+        local disk_path=$(echo "$partition_path" | sed 's/[0-9]*$//')
+        sudo parted "$disk_path" print | grep -A 1 "Number"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Delete Partition Wizard
+delete_partition_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_RED}🗑 ${WHITE}${BOLD}DELETE PARTITION${NC}                                          ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List all partitions
+    mapfile -t partitions < <(lsblk -pno NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT | grep part)
+
+    if [ ${#partitions[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No partitions found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Partitions ───────────────────────────────────────┐${NC}"
+    local i=1
+    for partition in "${partitions[@]}"; do
+        local part_name=$(echo "$partition" | awk '{print $1}')
+        local part_size=$(echo "$partition" | awk '{print $2}')
+        local part_fs=$(echo "$partition" | awk '{print $4}')
+        local part_mount=$(echo "$partition" | awk '{print $5}')
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %-15s ${DIM}Size:${NC}%-8s ${DIM}FS:${NC}%-8s ${DIM}Mount:${NC}%s\n" "$i" "$part_name" "$part_size" "${part_fs:--}" "${part_mount:--}"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter partition number (0 to cancel): " part_num
+
+    if [ -z "$part_num" ] || [ "$part_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$part_num" =~ ^[0-9]+$ ]] || [ "$part_num" -lt 1 ] || [ "$part_num" -gt ${#partitions[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local partition_info="${partitions[$((part_num-1))]}"
+    local partition_path=$(echo "$partition_info" | awk '{print $1}')
+    local partition_mount=$(echo "$partition_info" | awk '{print $5}')
+
+    # Check if mounted
+    if [ -n "$partition_mount" ] && [ "$partition_mount" != "-" ]; then
+        echo ""
+        echo -e "${BRIGHT_RED}⚠  Partition is currently mounted at: $partition_mount${NC}"
+        read -p "Unmount first? (y/n): " -n 1 unmount_choice
+        echo ""
+
+        if [[ $unmount_choice =~ ^[Yy]$ ]]; then
+            sudo umount "$partition_path"
+            if [ $? -ne 0 ]; then
+                echo -e "${RED}Failed to unmount partition${NC}"
+                read -p "Press Enter to continue..."
+                return
+            fi
+            echo -e "${BRIGHT_GREEN}✓ Unmounted${NC}"
+        else
+            echo -e "${YELLOW}Cancelled - partition is still mounted${NC}"
+            read -p "Press Enter to continue..."
+            return
+        fi
+    fi
+
+    # Confirm deletion
+    echo ""
+    echo -e "${BRIGHT_RED}⚠  WARNING: This will permanently delete the partition and all data on it!${NC}"
+    echo -e "Partition: ${BRIGHT_CYAN}$partition_path${NC}"
+    read -p "Type 'yes' to confirm deletion: " confirm
+
+    if [ "$confirm" != "yes" ]; then
+        echo -e "${YELLOW}Cancelled${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Get partition number and disk
+    local part_number=$(echo "$partition_path" | grep -o '[0-9]*$')
+    local disk_path=$(echo "$partition_path" | sed 's/[0-9]*$//')
+
+    # Delete using parted
+    echo ""
+    echo -e "${BRIGHT_CYAN}Deleting partition...${NC}"
+
+    if command -v parted &> /dev/null; then
+        sudo parted "$disk_path" rm "$part_number"
+        if [ $? -eq 0 ]; then
+            echo -e "${BRIGHT_GREEN}✓ Partition deleted successfully${NC}"
+            sudo partprobe "$disk_path" 2>/dev/null
+        else
+            echo -e "${BRIGHT_RED}✗ Failed to delete partition${NC}"
+        fi
+    else
+        echo -e "${YELLOW}parted not found. Use fdisk manually to delete partition.${NC}"
+    fi
 
     echo ""
     read -p "Press Enter to continue..."
