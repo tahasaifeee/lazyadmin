@@ -169,7 +169,7 @@ disk_management_menu() {
         echo ""
 
         case $choice in
-            1) echo "LVM Management - Feature coming soon"; read -p "Press Enter to continue..." ;;
+            1) manage_lvm ;;
             2) manage_raid ;;
             3) echo "ZFS Management - Feature coming soon"; read -p "Press Enter to continue..." ;;
             4) echo "Disk Partitioning - Feature coming soon"; read -p "Press Enter to continue..." ;;
@@ -1195,6 +1195,465 @@ remove_raid_array() {
     else
         echo -e "${YELLOW}Cancelled${NC}"
     fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# LVM Management
+manage_lvm() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_BLUE}📊 ${WHITE}${BOLD}LVM MANAGEMENT${NC}                                            ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # Check if LVM tools are installed
+    if ! command -v lvm &> /dev/null; then
+        echo -e "${YELLOW}LVM tools not installed.${NC}"
+        echo ""
+        read -p "Would you like to install lvm2? (y/n): " -n 1 install_choice
+        echo ""
+
+        if [[ $install_choice =~ ^[Yy]$ ]]; then
+            PKG_MGR=$(detect_package_manager)
+            case $PKG_MGR in
+                apt) sudo apt install -y lvm2 ;;
+                dnf) sudo dnf install -y lvm2 ;;
+                yum) sudo yum install -y lvm2 ;;
+                *) echo -e "${RED}Could not install lvm2${NC}"; read -p "Press Enter..."; return ;;
+            esac
+        else
+            read -p "Press Enter to continue..."
+            return
+        fi
+    fi
+
+    echo -e "${BRIGHT_CYAN}LVM Operations:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} View LVM Information ${DIM}(PV/VG/LV)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} Create Physical Volume ${DIM}(wizard)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[3]${NC} Create Volume Group ${DIM}(wizard)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[4]${NC} Create Logical Volume ${DIM}(wizard)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[5]${NC} Extend Logical Volume"
+    echo -e "  ${BRIGHT_GREEN}[6]${NC} Remove LVM Component"
+    echo -e "  ${BRIGHT_RED}[0]${NC} Back"
+    echo ""
+    read -p "Choose option: " -n 1 lvm_choice
+    echo ""
+    echo ""
+
+    case $lvm_choice in
+        1) view_lvm_info ;;
+        2) create_pv_wizard ;;
+        3) create_vg_wizard ;;
+        4) create_lv_wizard ;;
+        5) extend_lv_wizard ;;
+        6) remove_lvm_component ;;
+        0) return ;;
+    esac
+}
+
+view_lvm_info() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_CYAN}📊 ${WHITE}${BOLD}LVM INFORMATION${NC}                                           ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_YELLOW}┌─ Physical Volumes (PV) ──────────────────────────────────────┐${NC}"
+    sudo pvs 2>/dev/null || echo -e "${DIM}  No physical volumes${NC}"
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_BLUE}┌─ Volume Groups (VG) ─────────────────────────────────────────┐${NC}"
+    sudo vgs 2>/dev/null || echo -e "${DIM}  No volume groups${NC}"
+    echo -e "${BRIGHT_BLUE}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_GREEN}┌─ Logical Volumes (LV) ───────────────────────────────────────┐${NC}"
+    sudo lvs 2>/dev/null || echo -e "${DIM}  No logical volumes${NC}"
+    echo -e "${BRIGHT_GREEN}└──────────────────────────────────────────────────────────────┘${NC}"
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+create_pv_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_GREEN}🔧 ${WHITE}${BOLD}CREATE PHYSICAL VOLUME - Wizard${NC}                          ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # Auto-detect available disks/partitions
+    echo -e "${BRIGHT_CYAN}Auto-detecting available devices...${NC}"
+    echo ""
+
+    mapfile -t devices < <(lsblk -dpno NAME,SIZE,TYPE | grep -E 'disk|part' | awk '{print $1 " (" $2 " " $3 ")"}')
+
+    if [ ${#devices[@]} -eq 0 ]; then
+        echo -e "${RED}No available devices found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Devices ──────────────────────────────────────────┐${NC}"
+    local i=1
+    for device in "${devices[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$device"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter device number (0 to cancel): " dev_num
+
+    if [ -z "$dev_num" ] || [ "$dev_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$dev_num" =~ ^[0-9]+$ ]] || [ "$dev_num" -lt 1 ] || [ "$dev_num" -gt ${#devices[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local device_path=$(echo "${devices[$((dev_num-1))]}" | awk '{print $1}')
+
+    echo ""
+    echo -e "${BRIGHT_YELLOW}⚠  Creating Physical Volume on: ${BRIGHT_CYAN}$device_path${NC}"
+    echo -e "${BRIGHT_RED}WARNING: This will erase all data on the device!${NC}"
+    read -p "Continue? (yes/no): " confirm
+
+    if [ "$confirm" = "yes" ]; then
+        echo ""
+        sudo pvcreate "$device_path"
+        if [ $? -eq 0 ]; then
+            echo -e "${BRIGHT_GREEN}✓ Physical Volume created successfully${NC}"
+        else
+            echo -e "${BRIGHT_RED}✗ Failed to create Physical Volume${NC}"
+        fi
+    else
+        echo -e "${YELLOW}Cancelled${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+create_vg_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_GREEN}🔧 ${WHITE}${BOLD}CREATE VOLUME GROUP - Wizard${NC}                             ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List available PVs
+    mapfile -t pvs < <(sudo pvs --noheadings -o pv_name,pv_size,vg_name 2>/dev/null | awk '$3 == "" {print $1 " (" $2 ")"}')
+
+    if [ ${#pvs[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No available Physical Volumes found${NC}"
+        echo -e "${DIM}Create a Physical Volume first${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Physical Volumes ─────────────────────────────────┐${NC}"
+    local i=1
+    for pv in "${pvs[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$pv"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    echo -e "${DIM}Enter PV numbers separated by spaces (e.g., 1 2 3):${NC}"
+    read -p "> " pv_selection
+
+    # Parse selection
+    local selected_pvs=()
+    for num in $pv_selection; do
+        if [[ "$num" =~ ^[0-9]+$ ]] && [ "$num" -ge 1 ] && [ "$num" -le ${#pvs[@]} ]; then
+            local pv_path=$(echo "${pvs[$((num-1))]}" | awk '{print $1}')
+            selected_pvs+=("$pv_path")
+        fi
+    done
+
+    if [ ${#selected_pvs[@]} -eq 0 ]; then
+        echo -e "${RED}No valid PVs selected${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo ""
+    read -p "Enter Volume Group name: " vg_name
+
+    if [ -z "$vg_name" ]; then
+        echo -e "${RED}VG name cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo ""
+    echo -e "${BRIGHT_CYAN}Creating Volume Group: ${BRIGHT_YELLOW}$vg_name${NC}"
+    echo -e "${WHITE}Physical Volumes: ${BRIGHT_CYAN}${selected_pvs[*]}${NC}"
+    echo ""
+    read -p "Continue? (y/n): " -n 1 confirm
+    echo ""
+
+    if [[ $confirm =~ ^[Yy]$ ]]; then
+        echo ""
+        sudo vgcreate "$vg_name" "${selected_pvs[@]}"
+        if [ $? -eq 0 ]; then
+            echo -e "${BRIGHT_GREEN}✓ Volume Group created successfully${NC}"
+        else
+            echo -e "${BRIGHT_RED}✗ Failed to create Volume Group${NC}"
+        fi
+    else
+        echo -e "${YELLOW}Cancelled${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+create_lv_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_GREEN}🔧 ${WHITE}${BOLD}CREATE LOGICAL VOLUME - Wizard${NC}                           ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List available VGs
+    mapfile -t vgs < <(sudo vgs --noheadings -o vg_name,vg_size,vg_free 2>/dev/null | awk '{print $1 " (Size:" $2 " Free:" $3 ")"}')
+
+    if [ ${#vgs[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No Volume Groups found${NC}"
+        echo -e "${DIM}Create a Volume Group first${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Volume Groups ────────────────────────────────────┐${NC}"
+    local i=1
+    for vg in "${vgs[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$vg"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter VG number (0 to cancel): " vg_num
+
+    if [ -z "$vg_num" ] || [ "$vg_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$vg_num" =~ ^[0-9]+$ ]] || [ "$vg_num" -lt 1 ] || [ "$vg_num" -gt ${#vgs[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local vg_name=$(echo "${vgs[$((vg_num-1))]}" | awk '{print $1}')
+
+    echo ""
+    read -p "Enter Logical Volume name: " lv_name
+
+    if [ -z "$lv_name" ]; then
+        echo -e "${RED}LV name cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo ""
+    read -p "Enter size (e.g., 10G, 500M, or 100%FREE): " lv_size
+
+    if [ -z "$lv_size" ]; then
+        echo -e "${RED}Size cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo ""
+    echo -e "${BRIGHT_CYAN}Creating Logical Volume:${NC}"
+    echo -e "  ${WHITE}Name:${NC} ${BRIGHT_YELLOW}$lv_name${NC}"
+    echo -e "  ${WHITE}Size:${NC} ${BRIGHT_CYAN}$lv_size${NC}"
+    echo -e "  ${WHITE}Volume Group:${NC} ${BRIGHT_GREEN}$vg_name${NC}"
+    echo ""
+    read -p "Continue? (y/n): " -n 1 confirm
+    echo ""
+
+    if [[ $confirm =~ ^[Yy]$ ]]; then
+        echo ""
+        if [[ "$lv_size" =~ %FREE ]]; then
+            sudo lvcreate -l "$lv_size" -n "$lv_name" "$vg_name"
+        else
+            sudo lvcreate -L "$lv_size" -n "$lv_name" "$vg_name"
+        fi
+
+        if [ $? -eq 0 ]; then
+            echo -e "${BRIGHT_GREEN}✓ Logical Volume created: /dev/$vg_name/$lv_name${NC}"
+        else
+            echo -e "${BRIGHT_RED}✗ Failed to create Logical Volume${NC}"
+        fi
+    else
+        echo -e "${YELLOW}Cancelled${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+extend_lv_wizard() {
+    clear
+    echo -e "${BRIGHT_CYAN}${BOLD}EXTEND LOGICAL VOLUME${NC}"
+    echo ""
+
+    # List LVs
+    mapfile -t lvs < <(sudo lvs --noheadings -o lv_name,vg_name,lv_size 2>/dev/null | awk '{print $2 "/" $1 " (" $3 ")"}')
+
+    if [ ${#lvs[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No Logical Volumes found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}Logical Volumes:${NC}"
+    local i=1
+    for lv in "${lvs[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$lv"
+        ((i++))
+    done
+    echo ""
+
+    read -p "Enter LV number (0 to cancel): " lv_num
+
+    if [ -z "$lv_num" ] || [ "$lv_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$lv_num" =~ ^[0-9]+$ ]] || [ "$lv_num" -lt 1 ] || [ "$lv_num" -gt ${#lvs[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local lv_path="/dev/$(echo "${lvs[$((lv_num-1))]}" | awk '{print $1}')"
+
+    echo ""
+    read -p "Enter additional size (e.g., +5G, +500M): " extend_size
+
+    echo ""
+    sudo lvextend -L "$extend_size" "$lv_path"
+
+    if [ $? -eq 0 ]; then
+        echo -e "${BRIGHT_GREEN}✓ Logical Volume extended${NC}"
+        echo ""
+        read -p "Resize filesystem? (y/n): " -n 1 resize_fs
+        echo ""
+
+        if [[ $resize_fs =~ ^[Yy]$ ]]; then
+            sudo resize2fs "$lv_path" 2>/dev/null || sudo xfs_growfs "$lv_path" 2>/dev/null
+            echo -e "${BRIGHT_GREEN}✓ Filesystem resized${NC}"
+        fi
+    else
+        echo -e "${BRIGHT_RED}✗ Failed to extend LV${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+remove_lvm_component() {
+    clear
+    echo -e "${BRIGHT_CYAN}${BOLD}REMOVE LVM COMPONENT${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_YELLOW}What to remove?${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} Logical Volume"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} Volume Group"
+    echo -e "  ${BRIGHT_GREEN}[3]${NC} Physical Volume"
+    echo -e "  ${BRIGHT_RED}[0]${NC} Cancel"
+    echo ""
+    read -p "Choose: " -n 1 remove_type
+    echo ""
+    echo ""
+
+    case $remove_type in
+        1)
+            mapfile -t lvs < <(sudo lvs --noheadings -o lv_path 2>/dev/null)
+            if [ ${#lvs[@]} -eq 0 ]; then
+                echo -e "${YELLOW}No LVs found${NC}"
+            else
+                local i=1
+                for lv in "${lvs[@]}"; do
+                    printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$lv"
+                    ((i++))
+                done
+                echo ""
+                read -p "Enter LV number: " lv_num
+                if [[ "$lv_num" =~ ^[0-9]+$ ]] && [ "$lv_num" -ge 1 ] && [ "$lv_num" -le ${#lvs[@]} ]; then
+                    local lv_path="${lvs[$((lv_num-1))]}"
+                    echo ""
+                    echo -e "${BRIGHT_RED}⚠  Removing: $lv_path${NC}"
+                    read -p "Type 'yes' to confirm: " confirm
+                    if [ "$confirm" = "yes" ]; then
+                        sudo lvremove -f "$lv_path"
+                        [ $? -eq 0 ] && echo -e "${BRIGHT_GREEN}✓ Removed${NC}" || echo -e "${BRIGHT_RED}✗ Failed${NC}"
+                    fi
+                fi
+            fi
+            ;;
+        2)
+            mapfile -t vgs < <(sudo vgs --noheadings -o vg_name 2>/dev/null)
+            if [ ${#vgs[@]} -eq 0 ]; then
+                echo -e "${YELLOW}No VGs found${NC}"
+            else
+                local i=1
+                for vg in "${vgs[@]}"; do
+                    printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$vg"
+                    ((i++))
+                done
+                echo ""
+                read -p "Enter VG number: " vg_num
+                if [[ "$vg_num" =~ ^[0-9]+$ ]] && [ "$vg_num" -ge 1 ] && [ "$vg_num" -le ${#vgs[@]} ]; then
+                    local vg_name="${vgs[$((vg_num-1))]}"
+                    echo ""
+                    echo -e "${BRIGHT_RED}⚠  Removing: $vg_name${NC}"
+                    read -p "Type 'yes' to confirm: " confirm
+                    if [ "$confirm" = "yes" ]; then
+                        sudo vgremove -f "$vg_name"
+                        [ $? -eq 0 ] && echo -e "${BRIGHT_GREEN}✓ Removed${NC}" || echo -e "${BRIGHT_RED}✗ Failed${NC}"
+                    fi
+                fi
+            fi
+            ;;
+        3)
+            mapfile -t pvs < <(sudo pvs --noheadings -o pv_name 2>/dev/null)
+            if [ ${#pvs[@]} -eq 0 ]; then
+                echo -e "${YELLOW}No PVs found${NC}"
+            else
+                local i=1
+                for pv in "${pvs[@]}"; do
+                    printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$pv"
+                    ((i++))
+                done
+                echo ""
+                read -p "Enter PV number: " pv_num
+                if [[ "$pv_num" =~ ^[0-9]+$ ]] && [ "$pv_num" -ge 1 ] && [ "$pv_num" -le ${#pvs[@]} ]; then
+                    local pv_path="${pvs[$((pv_num-1))]}"
+                    echo ""
+                    echo -e "${BRIGHT_RED}⚠  Removing: $pv_path${NC}"
+                    read -p "Type 'yes' to confirm: " confirm
+                    if [ "$confirm" = "yes" ]; then
+                        sudo pvremove -f "$pv_path"
+                        [ $? -eq 0 ] && echo -e "${BRIGHT_GREEN}✓ Removed${NC}" || echo -e "${BRIGHT_RED}✗ Failed${NC}"
+                    fi
+                fi
+            fi
+            ;;
+    esac
 
     echo ""
     read -p "Press Enter to continue..."
