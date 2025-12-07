@@ -5,22 +5,38 @@
 
 VERSION="2.0.0"
 
-# Color codes
+# Color codes - Enhanced with bright colors
 RED='\033[0;31m'
 GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 PURPLE='\033[0;35m'
 CYAN='\033[0;36m'
+WHITE='\033[1;37m'
+
+# Bright/Bold colors
+BRIGHT_RED='\033[1;31m'
+BRIGHT_GREEN='\033[1;32m'
+BRIGHT_YELLOW='\033[1;33m'
+BRIGHT_BLUE='\033[1;34m'
+BRIGHT_PURPLE='\033[1;35m'
+BRIGHT_CYAN='\033[1;36m'
+
+# Background colors
+BG_BLUE='\033[44m'
+BG_GREEN='\033[42m'
+BG_RED='\033[41m'
+
 BOLD='\033[1m'
+DIM='\033[2m'
 NC='\033[0m'
 
 # Clear screen and show header
 show_header() {
     clear
-    echo -e "${PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
-    echo -e "${PURPLE}║               ${BOLD}LazyAdmin v$VERSION${NC}${PURPLE}                              ║${NC}"
-    echo -e "${PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║  ${BRIGHT_CYAN}█${BRIGHT_BLUE}█${BRIGHT_GREEN}█ ${WHITE}${BOLD}LazyAdmin${NC} ${BRIGHT_YELLOW}v$VERSION${NC}  ${BRIGHT_CYAN}Linux System Administration${BRIGHT_PURPLE}  ║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 }
 
@@ -28,16 +44,21 @@ show_header() {
 main_menu() {
     while true; do
         show_header
-        echo -e "${CYAN}${BOLD}MAIN MENU${NC}"
+        echo -e "${BRIGHT_CYAN}╭─────────────────────────────────────────────────────────────╮${NC}"
+        echo -e "${BRIGHT_CYAN}│${NC}  ${WHITE}${BOLD}MAIN MENU${NC}                                                   ${BRIGHT_CYAN}│${NC}"
+        echo -e "${BRIGHT_CYAN}╰─────────────────────────────────────────────────────────────╯${NC}"
         echo ""
-        echo -e "  ${GREEN}[1]${NC} System Information"
-        echo -e "  ${GREEN}[2]${NC} User & Group Management"
-        echo -e "  ${GREEN}[3]${NC} Disk Management (LVM, RAID, ZFS)"
-        echo -e "  ${GREEN}[4]${NC} Package Management"
-        echo -e "  ${GREEN}[5]${NC} Network Tools"
-        echo -e "  ${RED}[0]${NC} Exit"
+        echo -e "  ${BRIGHT_GREEN}[1]${NC} ${BRIGHT_BLUE}⚙${NC}  ${WHITE}System Information${NC}"
+        echo -e "  ${BRIGHT_GREEN}[2]${NC} ${BRIGHT_YELLOW}👥${NC}  ${WHITE}User & Group Management${NC}"
+        echo -e "  ${BRIGHT_GREEN}[3]${NC} ${BRIGHT_PURPLE}💾${NC}  ${WHITE}Disk Management${NC} ${DIM}(LVM, RAID, ZFS)${NC}"
+        echo -e "  ${BRIGHT_GREEN}[4]${NC} ${BRIGHT_CYAN}📦${NC}  ${WHITE}Package Management${NC}"
+        echo -e "  ${BRIGHT_GREEN}[5]${NC} ${BRIGHT_GREEN}🌐${NC}  ${WHITE}Network Tools${NC}"
         echo ""
-        echo -e "${YELLOW}Press a number key to select:${NC} "
+        echo -e "  ${BRIGHT_RED}[0]${NC} ${RED}✖${NC}  ${WHITE}Exit${NC}"
+        echo ""
+        echo -e "${BRIGHT_CYAN}╭─────────────────────────────────────────────────────────────╮${NC}"
+        echo -e "${BRIGHT_CYAN}│${NC} ${BRIGHT_YELLOW}❯${NC} Press a number key to select                            ${BRIGHT_CYAN}│${NC}"
+        echo -e "${BRIGHT_CYAN}╰─────────────────────────────────────────────────────────────╯${NC}"
 
         read -n 1 -s choice
         echo ""
@@ -57,15 +78,19 @@ main_menu() {
 system_info_menu() {
     while true; do
         show_header
-        echo -e "${CYAN}${BOLD}SYSTEM INFORMATION${NC}"
+        echo -e "${BRIGHT_CYAN}╭─────────────────────────────────────────────────────────────╮${NC}"
+        echo -e "${BRIGHT_CYAN}│${NC}  ${BRIGHT_BLUE}⚙  ${WHITE}${BOLD}SYSTEM INFORMATION${NC}                                     ${BRIGHT_CYAN}│${NC}"
+        echo -e "${BRIGHT_CYAN}╰─────────────────────────────────────────────────────────────╯${NC}"
         echo ""
-        echo -e "  ${GREEN}[1]${NC} System Info"
-        echo -e "  ${GREEN}[2]${NC} Services"
-        echo -e "  ${GREEN}[3]${NC} Processes"
-        echo -e "  ${GREEN}[4]${NC} Disk Usage"
-        echo -e "  ${RED}[0]${NC} Back to Main Menu"
+        echo -e "  ${BRIGHT_GREEN}[1]${NC} ${BRIGHT_CYAN}📊${NC}  ${WHITE}System Info${NC}         ${DIM}- View system metrics & hardware${NC}"
+        echo -e "  ${BRIGHT_GREEN}[2]${NC} ${BRIGHT_PURPLE}🔧${NC}  ${WHITE}Services${NC}            ${DIM}- Manage systemd services${NC}"
+        echo -e "  ${BRIGHT_GREEN}[3]${NC} ${BRIGHT_YELLOW}⚡${NC}  ${WHITE}Processes${NC}           ${DIM}- View running processes${NC}"
+        echo -e "  ${BRIGHT_GREEN}[4]${NC} ${BRIGHT_BLUE}💿${NC}  ${WHITE}Disk Usage${NC}          ${DIM}- Monitor disk space${NC}"
         echo ""
-        echo -e "${YELLOW}Press a number key:${NC} "
+        echo -e "  ${BRIGHT_RED}[0]${NC} ${RED}←${NC}  ${WHITE}Back to Main Menu${NC}"
+        echo ""
+        echo -e "${DIM}${BRIGHT_CYAN}───────────────────────────────────────────────────────────────${NC}"
+        echo -e "${BRIGHT_YELLOW}❯${NC} Press a number key: "
 
         read -n 1 -s choice
         echo ""
@@ -84,19 +109,23 @@ system_info_menu() {
 user_management_menu() {
     while true; do
         show_header
-        echo -e "${CYAN}${BOLD}USER & GROUP MANAGEMENT${NC}"
+        echo -e "${BRIGHT_CYAN}╭─────────────────────────────────────────────────────────────╮${NC}"
+        echo -e "${BRIGHT_CYAN}│${NC}  ${BRIGHT_YELLOW}👥 ${WHITE}${BOLD}USER & GROUP MANAGEMENT${NC}                                ${BRIGHT_CYAN}│${NC}"
+        echo -e "${BRIGHT_CYAN}╰─────────────────────────────────────────────────────────────╯${NC}"
         echo ""
-        echo -e "  ${GREEN}[1]${NC} List Users & Groups"
-        echo -e "  ${GREEN}[2]${NC} Create User"
-        echo -e "  ${GREEN}[3]${NC} Delete User"
-        echo -e "  ${GREEN}[4]${NC} Add User to Group"
-        echo -e "  ${GREEN}[5]${NC} Remove User from Group"
-        echo -e "  ${GREEN}[6]${NC} Set/Reset Password"
-        echo -e "  ${GREEN}[7]${NC} Change User Shell"
-        echo -e "  ${GREEN}[8]${NC} Lock/Unlock User"
-        echo -e "  ${RED}[0]${NC} Back to Main Menu"
+        echo -e "  ${BRIGHT_GREEN}[1]${NC} ${BRIGHT_CYAN}📋${NC}  ${WHITE}List Users & Groups${NC}      ${DIM}- View all users/groups${NC}"
+        echo -e "  ${BRIGHT_GREEN}[2]${NC} ${BRIGHT_GREEN}➕${NC}  ${WHITE}Create User${NC}              ${DIM}- Add new user account${NC}"
+        echo -e "  ${BRIGHT_GREEN}[3]${NC} ${BRIGHT_RED}➖${NC}  ${WHITE}Delete User${NC}              ${DIM}- Remove user account${NC}"
+        echo -e "  ${BRIGHT_GREEN}[4]${NC} ${BRIGHT_BLUE}👤${NC}  ${WHITE}Add User to Group${NC}        ${DIM}- Grant group membership${NC}"
+        echo -e "  ${BRIGHT_GREEN}[5]${NC} ${BRIGHT_YELLOW}👥${NC}  ${WHITE}Remove User from Group${NC}   ${DIM}- Revoke group membership${NC}"
+        echo -e "  ${BRIGHT_GREEN}[6]${NC} ${BRIGHT_PURPLE}🔑${NC}  ${WHITE}Set/Reset Password${NC}       ${DIM}- Change user password${NC}"
+        echo -e "  ${BRIGHT_GREEN}[7]${NC} ${BRIGHT_CYAN}🐚${NC}  ${WHITE}Change User Shell${NC}        ${DIM}- Modify login shell${NC}"
+        echo -e "  ${BRIGHT_GREEN}[8]${NC} ${BRIGHT_RED}🔒${NC}  ${WHITE}Lock/Unlock User${NC}         ${DIM}- Toggle account lock${NC}"
         echo ""
-        echo -e "${YELLOW}Press a number key:${NC} "
+        echo -e "  ${BRIGHT_RED}[0]${NC} ${RED}←${NC}  ${WHITE}Back to Main Menu${NC}"
+        echo ""
+        echo -e "${DIM}${BRIGHT_CYAN}───────────────────────────────────────────────────────────────${NC}"
+        echo -e "${BRIGHT_YELLOW}❯${NC} Press a number key: "
 
         read -n 1 -s choice
         echo ""
@@ -119,18 +148,22 @@ user_management_menu() {
 disk_management_menu() {
     while true; do
         show_header
-        echo -e "${CYAN}${BOLD}DISK MANAGEMENT (LVM, RAID, ZFS)${NC}"
+        echo -e "${BRIGHT_CYAN}╭─────────────────────────────────────────────────────────────╮${NC}"
+        echo -e "${BRIGHT_CYAN}│${NC}  ${BRIGHT_PURPLE}💾 ${WHITE}${BOLD}DISK MANAGEMENT${NC} ${DIM}(LVM, RAID, ZFS)${NC}                      ${BRIGHT_CYAN}│${NC}"
+        echo -e "${BRIGHT_CYAN}╰─────────────────────────────────────────────────────────────╯${NC}"
         echo ""
-        echo -e "  ${GREEN}[1]${NC} LVM Management"
-        echo -e "  ${GREEN}[2]${NC} RAID Management (mdadm)"
-        echo -e "  ${GREEN}[3]${NC} ZFS Management"
-        echo -e "  ${GREEN}[4]${NC} Disk Partitioning"
-        echo -e "  ${GREEN}[5]${NC} Filesystem Operations"
-        echo -e "  ${GREEN}[6]${NC} Mount/Unmount Operations"
-        echo -e "  ${GREEN}[7]${NC} View Disk Information"
-        echo -e "  ${RED}[0]${NC} Back to Main Menu"
+        echo -e "  ${BRIGHT_GREEN}[1]${NC} ${BRIGHT_BLUE}📊${NC}  ${WHITE}LVM Management${NC}           ${DIM}- Physical/Logical Volumes${NC}"
+        echo -e "  ${BRIGHT_GREEN}[2]${NC} ${BRIGHT_YELLOW}⚡${NC}  ${WHITE}RAID Management${NC}          ${DIM}- mdadm RAID arrays${NC}"
+        echo -e "  ${BRIGHT_GREEN}[3]${NC} ${BRIGHT_CYAN}🗄${NC}  ${WHITE}ZFS Management${NC}           ${DIM}- Pools, datasets, snapshots${NC}"
+        echo -e "  ${BRIGHT_GREEN}[4]${NC} ${BRIGHT_PURPLE}🔧${NC}  ${WHITE}Disk Partitioning${NC}        ${DIM}- fdisk, parted${NC}"
+        echo -e "  ${BRIGHT_GREEN}[5]${NC} ${BRIGHT_GREEN}💿${NC}  ${WHITE}Filesystem Operations${NC}    ${DIM}- Create, check, resize${NC}"
+        echo -e "  ${BRIGHT_GREEN}[6]${NC} ${BRIGHT_YELLOW}📌${NC}  ${WHITE}Mount/Unmount${NC}            ${DIM}- Mount operations${NC}"
+        echo -e "  ${BRIGHT_GREEN}[7]${NC} ${BRIGHT_CYAN}ℹ${NC}  ${WHITE}View Disk Information${NC}    ${DIM}- Comprehensive overview${NC}"
         echo ""
-        echo -e "${YELLOW}Press a number key:${NC} "
+        echo -e "  ${BRIGHT_RED}[0]${NC} ${RED}←${NC}  ${WHITE}Back to Main Menu${NC}"
+        echo ""
+        echo -e "${DIM}${BRIGHT_CYAN}───────────────────────────────────────────────────────────────${NC}"
+        echo -e "${BRIGHT_YELLOW}❯${NC} Press a number key: "
 
         read -n 1 -s choice
         echo ""
@@ -152,18 +185,22 @@ disk_management_menu() {
 package_management_menu() {
     while true; do
         show_header
-        echo -e "${CYAN}${BOLD}PACKAGE MANAGEMENT${NC}"
+        echo -e "${BRIGHT_CYAN}╭─────────────────────────────────────────────────────────────╮${NC}"
+        echo -e "${BRIGHT_CYAN}│${NC}  ${BRIGHT_CYAN}📦 ${WHITE}${BOLD}PACKAGE MANAGEMENT${NC}                                      ${BRIGHT_CYAN}│${NC}"
+        echo -e "${BRIGHT_CYAN}╰─────────────────────────────────────────────────────────────╯${NC}"
         echo ""
-        echo -e "  ${GREEN}[1]${NC} Update Package Lists (apt/yum/dnf update)"
-        echo -e "  ${GREEN}[2]${NC} Install a Package"
-        echo -e "  ${GREEN}[3]${NC} Remove a Package"
-        echo -e "  ${GREEN}[4]${NC} Upgrade System"
-        echo -e "  ${GREEN}[5]${NC} Search Package"
-        echo -e "  ${GREEN}[6]${NC} List Installed Packages"
-        echo -e "  ${GREEN}[7]${NC} Clean Package Cache"
-        echo -e "  ${RED}[0]${NC} Back to Main Menu"
+        echo -e "  ${BRIGHT_GREEN}[1]${NC} ${BRIGHT_BLUE}🔄${NC}  ${WHITE}Update Package Lists${NC}     ${DIM}- apt/yum/dnf update${NC}"
+        echo -e "  ${BRIGHT_GREEN}[2]${NC} ${BRIGHT_GREEN}⬇${NC}  ${WHITE}Install a Package${NC}        ${DIM}- Install new software${NC}"
+        echo -e "  ${BRIGHT_GREEN}[3]${NC} ${BRIGHT_RED}🗑${NC}  ${WHITE}Remove a Package${NC}         ${DIM}- Uninstall software${NC}"
+        echo -e "  ${BRIGHT_GREEN}[4]${NC} ${BRIGHT_YELLOW}⬆${NC}  ${WHITE}Upgrade System${NC}           ${DIM}- Update all packages${NC}"
+        echo -e "  ${BRIGHT_GREEN}[5]${NC} ${BRIGHT_PURPLE}🔍${NC}  ${WHITE}Search Package${NC}           ${DIM}- Find packages${NC}"
+        echo -e "  ${BRIGHT_GREEN}[6]${NC} ${BRIGHT_CYAN}📋${NC}  ${WHITE}List Installed Packages${NC}  ${DIM}- Show installed${NC}"
+        echo -e "  ${BRIGHT_GREEN}[7]${NC} ${BRIGHT_BLUE}🧹${NC}  ${WHITE}Clean Package Cache${NC}      ${DIM}- Free disk space${NC}"
         echo ""
-        echo -e "${YELLOW}Press a number key:${NC} "
+        echo -e "  ${BRIGHT_RED}[0]${NC} ${RED}←${NC}  ${WHITE}Back to Main Menu${NC}"
+        echo ""
+        echo -e "${DIM}${BRIGHT_CYAN}───────────────────────────────────────────────────────────────${NC}"
+        echo -e "${BRIGHT_YELLOW}❯${NC} Press a number key: "
 
         read -n 1 -s choice
         echo ""
@@ -185,20 +222,24 @@ package_management_menu() {
 network_tools_menu() {
     while true; do
         show_header
-        echo -e "${CYAN}${BOLD}NETWORK TOOLS${NC}"
+        echo -e "${BRIGHT_CYAN}╭─────────────────────────────────────────────────────────────╮${NC}"
+        echo -e "${BRIGHT_CYAN}│${NC}  ${BRIGHT_GREEN}🌐 ${WHITE}${BOLD}NETWORK TOOLS${NC}                                           ${BRIGHT_CYAN}│${NC}"
+        echo -e "${BRIGHT_CYAN}╰─────────────────────────────────────────────────────────────╯${NC}"
         echo ""
-        echo -e "  ${GREEN}[1]${NC} Ping Test"
-        echo -e "  ${GREEN}[2]${NC} Traceroute"
-        echo -e "  ${GREEN}[3]${NC} DNS Lookup (dig/nslookup)"
-        echo -e "  ${GREEN}[4]${NC} Check Open Ports (netstat/ss)"
-        echo -e "  ${GREEN}[5]${NC} Test Specific Port (nc)"
-        echo -e "  ${GREEN}[6]${NC} Network Speed Test"
-        echo -e "  ${GREEN}[7]${NC} Flush DNS Cache"
-        echo -e "  ${GREEN}[8]${NC} Restart Network Service"
-        echo -e "  ${GREEN}[9]${NC} View Firewall Rules"
-        echo -e "  ${RED}[0]${NC} Back to Main Menu"
+        echo -e "  ${BRIGHT_GREEN}[1]${NC} ${BRIGHT_YELLOW}📡${NC}  ${WHITE}Ping Test${NC}                ${DIM}- Test connectivity${NC}"
+        echo -e "  ${BRIGHT_GREEN}[2]${NC} ${BRIGHT_PURPLE}🗺${NC}  ${WHITE}Traceroute${NC}               ${DIM}- Trace network path${NC}"
+        echo -e "  ${BRIGHT_GREEN}[3]${NC} ${BRIGHT_BLUE}🔍${NC}  ${WHITE}DNS Lookup${NC}               ${DIM}- Resolve domains${NC}"
+        echo -e "  ${BRIGHT_GREEN}[4]${NC} ${BRIGHT_CYAN}🔌${NC}  ${WHITE}Check Open Ports${NC}         ${DIM}- View listening ports${NC}"
+        echo -e "  ${BRIGHT_GREEN}[5]${NC} ${BRIGHT_GREEN}🎯${NC}  ${WHITE}Test Specific Port${NC}       ${DIM}- Check port status${NC}"
+        echo -e "  ${BRIGHT_GREEN}[6]${NC} ${BRIGHT_YELLOW}⚡${NC}  ${WHITE}Network Speed Test${NC}       ${DIM}- Measure bandwidth${NC}"
+        echo -e "  ${BRIGHT_GREEN}[7]${NC} ${BRIGHT_PURPLE}💧${NC}  ${WHITE}Flush DNS Cache${NC}          ${DIM}- Clear DNS cache${NC}"
+        echo -e "  ${BRIGHT_GREEN}[8]${NC} ${BRIGHT_RED}🔄${NC}  ${WHITE}Restart Network Service${NC}  ${DIM}- Restart networking${NC}"
+        echo -e "  ${BRIGHT_GREEN}[9]${NC} ${BRIGHT_BLUE}🛡${NC}  ${WHITE}View Firewall Rules${NC}      ${DIM}- Display firewall${NC}"
         echo ""
-        echo -e "${YELLOW}Press a number key:${NC} "
+        echo -e "  ${BRIGHT_RED}[0]${NC} ${RED}←${NC}  ${WHITE}Back to Main Menu${NC}"
+        echo ""
+        echo -e "${DIM}${BRIGHT_CYAN}───────────────────────────────────────────────────────────────${NC}"
+        echo -e "${BRIGHT_YELLOW}❯${NC} Press a number key: "
 
         read -n 1 -s choice
         echo ""
@@ -224,56 +265,76 @@ network_tools_menu() {
 
 show_system_info() {
     clear
-    echo -e "${CYAN}${BOLD}═══════════════════════════════════════════════════════════════${NC}"
-    echo -e "${CYAN}${BOLD}                        SYSTEM INFORMATION                      ${NC}"
-    echo -e "${CYAN}${BOLD}═══════════════════════════════════════════════════════════════${NC}"
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_CYAN}📊 ${WHITE}${BOLD}SYSTEM INFORMATION${NC}                                       ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 
-    echo -e "${GREEN}Hostname:${NC}     $(hostname)"
-    echo -e "${GREEN}OS:${NC}           $(lsb_release -d 2>/dev/null | cut -f2 || cat /etc/os-release | grep PRETTY_NAME | cut -d'"' -f2)"
-    echo -e "${GREEN}Kernel:${NC}       $(uname -r)"
-    echo -e "${GREEN}Uptime:${NC}       $(uptime -p)"
-    echo -e "${GREEN}Load Average:${NC} $(uptime | awk -F'load average:' '{print $2}')"
+    echo -e "${BRIGHT_YELLOW}┌─ System Details ────────────────────────────────────────────┐${NC}"
+    echo -e "  ${BRIGHT_GREEN}Hostname:${NC}     ${WHITE}$(hostname)${NC}"
+    echo -e "  ${BRIGHT_GREEN}OS:${NC}           ${WHITE}$(lsb_release -d 2>/dev/null | cut -f2 || cat /etc/os-release | grep PRETTY_NAME | cut -d'"' -f2)${NC}"
+    echo -e "  ${BRIGHT_GREEN}Kernel:${NC}       ${WHITE}$(uname -r)${NC}"
+    echo -e "  ${BRIGHT_GREEN}Uptime:${NC}       ${BRIGHT_CYAN}$(uptime -p)${NC}"
+    echo -e "  ${BRIGHT_GREEN}Load Average:${NC} ${BRIGHT_YELLOW}$(uptime | awk -F'load average:' '{print $2}')${NC}"
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
     echo ""
-    echo -e "${GREEN}CPU:${NC}          $(lscpu | grep 'Model name' | cut -d: -f2 | xargs)"
-    echo -e "${GREEN}Cores:${NC}        $(nproc)"
-    echo -e "${GREEN}Architecture:${NC} $(uname -m)"
+
+    echo -e "${BRIGHT_BLUE}┌─ CPU Information ────────────────────────────────────────────┐${NC}"
+    echo -e "  ${BRIGHT_GREEN}CPU:${NC}          ${WHITE}$(lscpu | grep 'Model name' | cut -d: -f2 | xargs)${NC}"
+    echo -e "  ${BRIGHT_GREEN}Cores:${NC}        ${BRIGHT_CYAN}$(nproc)${NC}"
+    echo -e "  ${BRIGHT_GREEN}Architecture:${NC} ${BRIGHT_CYAN}$(uname -m)${NC}"
+    echo -e "${BRIGHT_BLUE}└──────────────────────────────────────────────────────────────┘${NC}"
     echo ""
-    echo -e "${GREEN}Memory:${NC}"
-    free -h | grep -E 'Mem|Swap' | awk '{printf "  %-6s Total: %-8s Used: %-8s Free: %-8s\n", $1, $2, $3, $4}'
+
+    echo -e "${BRIGHT_PURPLE}┌─ Memory Usage ───────────────────────────────────────────────┐${NC}"
+    free -h | grep -E 'Mem|Swap' | awk -v green="'"${BRIGHT_GREEN}"'" -v white="'"${WHITE}"'" -v cyan="'"${BRIGHT_CYAN}"'" -v nc="'"${NC}"'" '{printf "  " green "%-6s" nc " Total: " cyan "%-8s" nc " Used: " white "%-8s" nc " Free: " cyan "%-8s" nc "\n", $1, $2, $3, $4}'
+    echo -e "${BRIGHT_PURPLE}└──────────────────────────────────────────────────────────────┘${NC}"
     echo ""
-    echo -e "${GREEN}Network:${NC}"
-    ip -br addr | grep -v "lo" | awk '{printf "  %-10s %s\n", $1, $3}'
+
+    echo -e "${BRIGHT_CYAN}┌─ Network Interfaces ─────────────────────────────────────────┐${NC}"
+    ip -br addr | grep -v "lo" | awk -v green="'"${BRIGHT_GREEN}"'" -v white="'"${WHITE}"'" -v nc="'"${NC}"'" '{printf "  " green "%-10s" nc " " white "%s" nc "\n", $1, $3}'
+    echo -e "${BRIGHT_CYAN}└──────────────────────────────────────────────────────────────┘${NC}"
 
     echo ""
-    read -p "Press Enter to continue..."
+    echo -e "${DIM}Press Enter to continue...${NC}"
+    read
 }
 
 show_services() {
     clear
-    echo -e "${CYAN}${BOLD}TOP 20 SERVICES${NC}"
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_PURPLE}🔧 ${WHITE}${BOLD}RUNNING SERVICES${NC} ${DIM}(Top 20)${NC}                             ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
     systemctl list-units --type=service --state=running --no-pager | head -n 20
     echo ""
-    read -p "Press Enter to continue..."
+    echo -e "${DIM}Press Enter to continue...${NC}"
+    read
 }
 
 show_processes() {
     clear
-    echo -e "${CYAN}${BOLD}TOP 20 PROCESSES (BY MEMORY)${NC}"
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_YELLOW}⚡ ${WHITE}${BOLD}TOP PROCESSES${NC} ${DIM}(Sorted by Memory Usage)${NC}              ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
     ps aux --sort=-%mem | head -n 21
     echo ""
-    read -p "Press Enter to continue..."
+    echo -e "${DIM}Press Enter to continue...${NC}"
+    read
 }
 
 show_disk_usage() {
     clear
-    echo -e "${CYAN}${BOLD}DISK USAGE${NC}"
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_BLUE}💿 ${WHITE}${BOLD}DISK USAGE${NC}                                                ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
-    df -h | grep -E '^Filesystem|^/dev/'
+    echo -e "${BRIGHT_CYAN}Filesystem${NC}      ${BRIGHT_GREEN}Size${NC}  ${BRIGHT_YELLOW}Used${NC}  ${BRIGHT_BLUE}Avail${NC} ${BRIGHT_PURPLE}Use%${NC} ${BRIGHT_CYAN}Mounted on${NC}"
+    df -h | grep -E '^/dev/'
     echo ""
-    read -p "Press Enter to continue..."
+    echo -e "${DIM}Press Enter to continue...${NC}"
+    read
 }
 
 #=============================================================================
