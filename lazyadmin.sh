@@ -169,12 +169,12 @@ disk_management_menu() {
         echo ""
 
         case $choice in
-            1) echo "LVM Management - Feature coming soon"; read -p "Press Enter to continue..." ;;
-            2) echo "RAID Management - Feature coming soon"; read -p "Press Enter to continue..." ;;
-            3) echo "ZFS Management - Feature coming soon"; read -p "Press Enter to continue..." ;;
-            4) echo "Disk Partitioning - Feature coming soon"; read -p "Press Enter to continue..." ;;
-            5) echo "Filesystem Operations - Feature coming soon"; read -p "Press Enter to continue..." ;;
-            6) echo "Mount/Unmount - Feature coming soon"; read -p "Press Enter to continue..." ;;
+            1) manage_lvm ;;
+            2) manage_raid ;;
+            3) manage_zfs ;;
+            4) manage_partitioning ;;
+            5) manage_filesystems ;;
+            6) manage_mount_operations ;;
             7) view_disk_info ;;
             0) return ;;
         esac
@@ -886,13 +886,2847 @@ lock_unlock_user() {
 
 view_disk_info() {
     clear
-    echo -e "${CYAN}${BOLD}DISK INFORMATION${NC}"
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_CYAN}ℹ  ${WHITE}${BOLD}DISK INFORMATION${NC}                                          ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
-    echo -e "${GREEN}DISK USAGE:${NC}"
+
+    echo -e "${BRIGHT_YELLOW}┌─ Disk Usage ─────────────────────────────────────────────────┐${NC}"
     df -h | grep -E '^Filesystem|^/dev/'
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
     echo ""
-    echo -e "${GREEN}BLOCK DEVICES:${NC}"
+
+    echo -e "${BRIGHT_CYAN}┌─ Block Devices ──────────────────────────────────────────────┐${NC}"
     lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT
+    echo -e "${BRIGHT_CYAN}└──────────────────────────────────────────────────────────────┘${NC}"
+
+    echo ""
+    echo -e "${DIM}Press Enter to continue...${NC}"
+    read
+}
+
+# RAID Management
+manage_raid() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_YELLOW}⚡ ${WHITE}${BOLD}RAID MANAGEMENT (mdadm)${NC}                                   ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # Check if mdadm is installed
+    if ! command -v mdadm &> /dev/null; then
+        echo -e "${YELLOW}mdadm is not installed.${NC}"
+        echo ""
+        read -p "Would you like to install it? (y/n): " -n 1 install_choice
+        echo ""
+
+        if [[ $install_choice =~ ^[Yy]$ ]]; then
+            PKG_MGR=$(detect_package_manager)
+            case $PKG_MGR in
+                apt) sudo apt install -y mdadm ;;
+                dnf) sudo dnf install -y mdadm ;;
+                yum) sudo yum install -y mdadm ;;
+                *) echo -e "${RED}Could not install mdadm${NC}"; read -p "Press Enter..."; return ;;
+            esac
+        else
+            read -p "Press Enter to continue..."
+            return
+        fi
+    fi
+
+    echo -e "${BRIGHT_CYAN}RAID Operations:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} View RAID Arrays"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} Create RAID Array ${DIM}(wizard)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[3]${NC} Stop RAID Array"
+    echo -e "  ${BRIGHT_GREEN}[4]${NC} Remove RAID Array"
+    echo -e "  ${BRIGHT_RED}[0]${NC} Back"
+    echo ""
+    read -p "Choose option: " -n 1 raid_choice
+    echo ""
+    echo ""
+
+    case $raid_choice in
+        1) view_raid_arrays ;;
+        2) create_raid_wizard ;;
+        3) stop_raid_array ;;
+        4) remove_raid_array ;;
+        0) return ;;
+    esac
+}
+
+view_raid_arrays() {
+    clear
+    echo -e "${BRIGHT_CYAN}${BOLD}RAID ARRAYS STATUS${NC}"
+    echo ""
+
+    if [ ! -f /proc/mdstat ]; then
+        echo -e "${YELLOW}No RAID support in kernel${NC}"
+    else
+        cat /proc/mdstat
+    fi
+
+    echo ""
+    echo -e "${BRIGHT_GREEN}Detailed RAID Information:${NC}"
+    echo ""
+    sudo mdadm --detail --scan 2>/dev/null || echo -e "${DIM}No RAID arrays found${NC}"
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+create_raid_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_GREEN}🔧 ${WHITE}${BOLD}CREATE RAID ARRAY - Wizard${NC}                               ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # Auto-detect available disks
+    echo -e "${BRIGHT_CYAN}Auto-detecting available disks...${NC}"
+    echo ""
+
+    mapfile -t disks < <(lsblk -dpno NAME,SIZE,TYPE | grep disk | awk '{print $1 " (" $2 ")"}')
+
+    if [ ${#disks[@]} -lt 2 ]; then
+        echo -e "${RED}Need at least 2 disks for RAID. Found: ${#disks[@]}${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Disks ────────────────────────────────────────────┐${NC}"
+    local i=1
+    for disk in "${disks[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$disk"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    # Select RAID level
+    echo -e "${BRIGHT_BLUE}Select RAID Level:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} RAID 0 ${DIM}(Striping - 2+ disks, no redundancy, max performance)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} RAID 1 ${DIM}(Mirroring - 2+ disks, full redundancy)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[3]${NC} RAID 5 ${DIM}(Striping + Parity - 3+ disks, 1 disk redundancy)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[4]${NC} RAID 6 ${DIM}(Double Parity - 4+ disks, 2 disk redundancy)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[5]${NC} RAID 10 ${DIM}(Mirrored Striping - 4+ disks, best of both)${NC}"
+    echo ""
+    read -p "Choose RAID level (1-5, 0 to cancel): " -n 1 raid_level
+    echo ""
+    echo ""
+
+    local raid_type min_disks
+    case $raid_level in
+        1) raid_type="0"; min_disks=2 ;;
+        2) raid_type="1"; min_disks=2 ;;
+        3) raid_type="5"; min_disks=3 ;;
+        4) raid_type="6"; min_disks=4 ;;
+        5) raid_type="10"; min_disks=4 ;;
+        0) return ;;
+        *) echo -e "${RED}Invalid choice${NC}"; read -p "Press Enter..."; return ;;
+    esac
+
+    if [ ${#disks[@]} -lt $min_disks ]; then
+        echo -e "${RED}RAID $raid_type requires at least $min_disks disks. Found: ${#disks[@]}${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Select disks
+    echo -e "${BRIGHT_CYAN}Select disks for RAID $raid_type (minimum: $min_disks)${NC}"
+    echo -e "${DIM}Enter disk numbers separated by spaces (e.g., 1 2 3):${NC}"
+    read -p "> " disk_selection
+
+    # Parse selection
+    local selected_disks=()
+    for num in $disk_selection; do
+        if [[ "$num" =~ ^[0-9]+$ ]] && [ "$num" -ge 1 ] && [ "$num" -le ${#disks[@]} ]; then
+            local disk_path=$(echo "${disks[$((num-1))]}" | awk '{print $1}')
+            selected_disks+=("$disk_path")
+        fi
+    done
+
+    if [ ${#selected_disks[@]} -lt $min_disks ]; then
+        echo -e "${RED}Not enough valid disks selected${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # RAID device name
+    echo ""
+    read -p "Enter RAID device name (e.g., md0): " raid_name
+    raid_name="/dev/${raid_name#/dev/}"
+
+    # Confirmation
+    echo ""
+    echo -e "${BRIGHT_YELLOW}⚠  RAID Configuration Summary:${NC}"
+    echo -e "  ${WHITE}RAID Level:${NC} ${BRIGHT_CYAN}$raid_type${NC}"
+    echo -e "  ${WHITE}Device:${NC} ${BRIGHT_CYAN}$raid_name${NC}"
+    echo -e "  ${WHITE}Disks:${NC} ${BRIGHT_CYAN}${selected_disks[*]}${NC}"
+    echo -e "  ${WHITE}Count:${NC} ${BRIGHT_CYAN}${#selected_disks[@]} disks${NC}"
+    echo ""
+    echo -e "${BRIGHT_RED}WARNING: This will erase all data on selected disks!${NC}"
+    read -p "Continue? (yes/no): " confirm
+
+    if [ "$confirm" != "yes" ]; then
+        echo -e "${YELLOW}Cancelled${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Create RAID
+    echo ""
+    echo -e "${BRIGHT_GREEN}Creating RAID array...${NC}"
+    sudo mdadm --create "$raid_name" --level="$raid_type" --raid-devices="${#selected_disks[@]}" "${selected_disks[@]}"
+
+    if [ $? -eq 0 ]; then
+        echo ""
+        echo -e "${BRIGHT_GREEN}✓ RAID array created successfully!${NC}"
+        echo ""
+        echo -e "${BRIGHT_CYAN}Array details:${NC}"
+        sudo mdadm --detail "$raid_name"
+    else
+        echo -e "${BRIGHT_RED}✗ Failed to create RAID array${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+stop_raid_array() {
+    clear
+    echo -e "${BRIGHT_CYAN}${BOLD}STOP RAID ARRAY${NC}"
+    echo ""
+
+    # List active arrays
+    mapfile -t arrays < <(cat /proc/mdstat | grep ^md | awk '{print $1}')
+
+    if [ ${#arrays[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No active RAID arrays found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}Active RAID Arrays:${NC}"
+    local i=1
+    for array in "${arrays[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} /dev/%s\n" "$i" "$array"
+        ((i++))
+    done
+    echo ""
+
+    read -p "Enter array number to stop (0 to cancel): " array_num
+
+    if [ -z "$array_num" ] || [ "$array_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$array_num" =~ ^[0-9]+$ ]] || [ "$array_num" -lt 1 ] || [ "$array_num" -gt ${#arrays[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local array_name="/dev/${arrays[$((array_num-1))]}"
+
+    echo ""
+    echo -e "${BRIGHT_YELLOW}⚠  Stopping RAID array: ${BRIGHT_RED}$array_name${NC}"
+    read -p "Continue? (y/n): " -n 1 confirm
+    echo ""
+
+    if [[ $confirm =~ ^[Yy]$ ]]; then
+        sudo mdadm --stop "$array_name"
+        if [ $? -eq 0 ]; then
+            echo -e "${BRIGHT_GREEN}✓ Array stopped${NC}"
+        else
+            echo -e "${BRIGHT_RED}✗ Failed to stop array${NC}"
+        fi
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+remove_raid_array() {
+    clear
+    echo -e "${BRIGHT_CYAN}${BOLD}REMOVE RAID ARRAY${NC}"
+    echo ""
+
+    # List arrays
+    mapfile -t arrays < <(cat /proc/mdstat 2>/dev/null | grep ^md | awk '{print $1}')
+
+    if [ ${#arrays[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No RAID arrays found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}RAID Arrays:${NC}"
+    local i=1
+    for array in "${arrays[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} /dev/%s\n" "$i" "$array"
+        ((i++))
+    done
+    echo ""
+
+    read -p "Enter array number to remove (0 to cancel): " array_num
+
+    if [ -z "$array_num" ] || [ "$array_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$array_num" =~ ^[0-9]+$ ]] || [ "$array_num" -lt 1 ] || [ "$array_num" -gt ${#arrays[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local array_name="/dev/${arrays[$((array_num-1))]}"
+
+    echo ""
+    echo -e "${BRIGHT_RED}⚠  WARNING: This will permanently remove RAID array: $array_name${NC}"
+    read -p "Type 'yes' to confirm: " confirm
+
+    if [ "$confirm" = "yes" ]; then
+        sudo mdadm --stop "$array_name" 2>/dev/null
+        sudo mdadm --remove "$array_name" 2>/dev/null
+        sudo mdadm --zero-superblock "$array_name" 2>/dev/null
+
+        echo -e "${BRIGHT_GREEN}✓ Array removed${NC}"
+    else
+        echo -e "${YELLOW}Cancelled${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# LVM Management
+manage_lvm() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_BLUE}📊 ${WHITE}${BOLD}LVM MANAGEMENT${NC}                                            ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # Check if LVM tools are installed
+    if ! command -v lvm &> /dev/null; then
+        echo -e "${YELLOW}LVM tools not installed.${NC}"
+        echo ""
+        read -p "Would you like to install lvm2? (y/n): " -n 1 install_choice
+        echo ""
+
+        if [[ $install_choice =~ ^[Yy]$ ]]; then
+            PKG_MGR=$(detect_package_manager)
+            case $PKG_MGR in
+                apt) sudo apt install -y lvm2 ;;
+                dnf) sudo dnf install -y lvm2 ;;
+                yum) sudo yum install -y lvm2 ;;
+                *) echo -e "${RED}Could not install lvm2${NC}"; read -p "Press Enter..."; return ;;
+            esac
+        else
+            read -p "Press Enter to continue..."
+            return
+        fi
+    fi
+
+    echo -e "${BRIGHT_CYAN}LVM Operations:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} View LVM Information ${DIM}(PV/VG/LV)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} Create Physical Volume ${DIM}(wizard)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[3]${NC} Create Volume Group ${DIM}(wizard)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[4]${NC} Create Logical Volume ${DIM}(wizard)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[5]${NC} Extend Logical Volume"
+    echo -e "  ${BRIGHT_GREEN}[6]${NC} Remove LVM Component"
+    echo -e "  ${BRIGHT_RED}[0]${NC} Back"
+    echo ""
+    read -p "Choose option: " -n 1 lvm_choice
+    echo ""
+    echo ""
+
+    case $lvm_choice in
+        1) view_lvm_info ;;
+        2) create_pv_wizard ;;
+        3) create_vg_wizard ;;
+        4) create_lv_wizard ;;
+        5) extend_lv_wizard ;;
+        6) remove_lvm_component ;;
+        0) return ;;
+    esac
+}
+
+view_lvm_info() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_CYAN}📊 ${WHITE}${BOLD}LVM INFORMATION${NC}                                           ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_YELLOW}┌─ Physical Volumes (PV) ──────────────────────────────────────┐${NC}"
+    sudo pvs 2>/dev/null || echo -e "${DIM}  No physical volumes${NC}"
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_BLUE}┌─ Volume Groups (VG) ─────────────────────────────────────────┐${NC}"
+    sudo vgs 2>/dev/null || echo -e "${DIM}  No volume groups${NC}"
+    echo -e "${BRIGHT_BLUE}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_GREEN}┌─ Logical Volumes (LV) ───────────────────────────────────────┐${NC}"
+    sudo lvs 2>/dev/null || echo -e "${DIM}  No logical volumes${NC}"
+    echo -e "${BRIGHT_GREEN}└──────────────────────────────────────────────────────────────┘${NC}"
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+create_pv_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_GREEN}🔧 ${WHITE}${BOLD}CREATE PHYSICAL VOLUME - Wizard${NC}                          ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # Auto-detect available disks/partitions
+    echo -e "${BRIGHT_CYAN}Auto-detecting available devices...${NC}"
+    echo ""
+
+    mapfile -t devices < <(lsblk -dpno NAME,SIZE,TYPE | grep -E 'disk|part' | awk '{print $1 " (" $2 " " $3 ")"}')
+
+    if [ ${#devices[@]} -eq 0 ]; then
+        echo -e "${RED}No available devices found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Devices ──────────────────────────────────────────┐${NC}"
+    local i=1
+    for device in "${devices[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$device"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter device number (0 to cancel): " dev_num
+
+    if [ -z "$dev_num" ] || [ "$dev_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$dev_num" =~ ^[0-9]+$ ]] || [ "$dev_num" -lt 1 ] || [ "$dev_num" -gt ${#devices[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local device_path=$(echo "${devices[$((dev_num-1))]}" | awk '{print $1}')
+
+    echo ""
+    echo -e "${BRIGHT_YELLOW}⚠  Creating Physical Volume on: ${BRIGHT_CYAN}$device_path${NC}"
+    echo -e "${BRIGHT_RED}WARNING: This will erase all data on the device!${NC}"
+    read -p "Continue? (yes/no): " confirm
+
+    if [ "$confirm" = "yes" ]; then
+        echo ""
+        sudo pvcreate "$device_path"
+        if [ $? -eq 0 ]; then
+            echo -e "${BRIGHT_GREEN}✓ Physical Volume created successfully${NC}"
+        else
+            echo -e "${BRIGHT_RED}✗ Failed to create Physical Volume${NC}"
+        fi
+    else
+        echo -e "${YELLOW}Cancelled${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+create_vg_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_GREEN}🔧 ${WHITE}${BOLD}CREATE VOLUME GROUP - Wizard${NC}                             ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List available PVs
+    mapfile -t pvs < <(sudo pvs --noheadings -o pv_name,pv_size,vg_name 2>/dev/null | awk '$3 == "" {print $1 " (" $2 ")"}')
+
+    if [ ${#pvs[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No available Physical Volumes found${NC}"
+        echo -e "${DIM}Create a Physical Volume first${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Physical Volumes ─────────────────────────────────┐${NC}"
+    local i=1
+    for pv in "${pvs[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$pv"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    echo -e "${DIM}Enter PV numbers separated by spaces (e.g., 1 2 3):${NC}"
+    read -p "> " pv_selection
+
+    # Parse selection
+    local selected_pvs=()
+    for num in $pv_selection; do
+        if [[ "$num" =~ ^[0-9]+$ ]] && [ "$num" -ge 1 ] && [ "$num" -le ${#pvs[@]} ]; then
+            local pv_path=$(echo "${pvs[$((num-1))]}" | awk '{print $1}')
+            selected_pvs+=("$pv_path")
+        fi
+    done
+
+    if [ ${#selected_pvs[@]} -eq 0 ]; then
+        echo -e "${RED}No valid PVs selected${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo ""
+    read -p "Enter Volume Group name: " vg_name
+
+    if [ -z "$vg_name" ]; then
+        echo -e "${RED}VG name cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo ""
+    echo -e "${BRIGHT_CYAN}Creating Volume Group: ${BRIGHT_YELLOW}$vg_name${NC}"
+    echo -e "${WHITE}Physical Volumes: ${BRIGHT_CYAN}${selected_pvs[*]}${NC}"
+    echo ""
+    read -p "Continue? (y/n): " -n 1 confirm
+    echo ""
+
+    if [[ $confirm =~ ^[Yy]$ ]]; then
+        echo ""
+        sudo vgcreate "$vg_name" "${selected_pvs[@]}"
+        if [ $? -eq 0 ]; then
+            echo -e "${BRIGHT_GREEN}✓ Volume Group created successfully${NC}"
+        else
+            echo -e "${BRIGHT_RED}✗ Failed to create Volume Group${NC}"
+        fi
+    else
+        echo -e "${YELLOW}Cancelled${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+create_lv_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_GREEN}🔧 ${WHITE}${BOLD}CREATE LOGICAL VOLUME - Wizard${NC}                           ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List available VGs
+    mapfile -t vgs < <(sudo vgs --noheadings -o vg_name,vg_size,vg_free 2>/dev/null | awk '{print $1 " (Size:" $2 " Free:" $3 ")"}')
+
+    if [ ${#vgs[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No Volume Groups found${NC}"
+        echo -e "${DIM}Create a Volume Group first${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Volume Groups ────────────────────────────────────┐${NC}"
+    local i=1
+    for vg in "${vgs[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$vg"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter VG number (0 to cancel): " vg_num
+
+    if [ -z "$vg_num" ] || [ "$vg_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$vg_num" =~ ^[0-9]+$ ]] || [ "$vg_num" -lt 1 ] || [ "$vg_num" -gt ${#vgs[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local vg_name=$(echo "${vgs[$((vg_num-1))]}" | awk '{print $1}')
+
+    echo ""
+    read -p "Enter Logical Volume name: " lv_name
+
+    if [ -z "$lv_name" ]; then
+        echo -e "${RED}LV name cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo ""
+    read -p "Enter size (e.g., 10G, 500M, or 100%FREE): " lv_size
+
+    if [ -z "$lv_size" ]; then
+        echo -e "${RED}Size cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo ""
+    echo -e "${BRIGHT_CYAN}Creating Logical Volume:${NC}"
+    echo -e "  ${WHITE}Name:${NC} ${BRIGHT_YELLOW}$lv_name${NC}"
+    echo -e "  ${WHITE}Size:${NC} ${BRIGHT_CYAN}$lv_size${NC}"
+    echo -e "  ${WHITE}Volume Group:${NC} ${BRIGHT_GREEN}$vg_name${NC}"
+    echo ""
+    read -p "Continue? (y/n): " -n 1 confirm
+    echo ""
+
+    if [[ $confirm =~ ^[Yy]$ ]]; then
+        echo ""
+        if [[ "$lv_size" =~ %FREE ]]; then
+            sudo lvcreate -l "$lv_size" -n "$lv_name" "$vg_name"
+        else
+            sudo lvcreate -L "$lv_size" -n "$lv_name" "$vg_name"
+        fi
+
+        if [ $? -eq 0 ]; then
+            echo -e "${BRIGHT_GREEN}✓ Logical Volume created: /dev/$vg_name/$lv_name${NC}"
+        else
+            echo -e "${BRIGHT_RED}✗ Failed to create Logical Volume${NC}"
+        fi
+    else
+        echo -e "${YELLOW}Cancelled${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+extend_lv_wizard() {
+    clear
+    echo -e "${BRIGHT_CYAN}${BOLD}EXTEND LOGICAL VOLUME${NC}"
+    echo ""
+
+    # List LVs
+    mapfile -t lvs < <(sudo lvs --noheadings -o lv_name,vg_name,lv_size 2>/dev/null | awk '{print $2 "/" $1 " (" $3 ")"}')
+
+    if [ ${#lvs[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No Logical Volumes found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}Logical Volumes:${NC}"
+    local i=1
+    for lv in "${lvs[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$lv"
+        ((i++))
+    done
+    echo ""
+
+    read -p "Enter LV number (0 to cancel): " lv_num
+
+    if [ -z "$lv_num" ] || [ "$lv_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$lv_num" =~ ^[0-9]+$ ]] || [ "$lv_num" -lt 1 ] || [ "$lv_num" -gt ${#lvs[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local lv_path="/dev/$(echo "${lvs[$((lv_num-1))]}" | awk '{print $1}')"
+
+    echo ""
+    read -p "Enter additional size (e.g., +5G, +500M): " extend_size
+
+    echo ""
+    sudo lvextend -L "$extend_size" "$lv_path"
+
+    if [ $? -eq 0 ]; then
+        echo -e "${BRIGHT_GREEN}✓ Logical Volume extended${NC}"
+        echo ""
+        read -p "Resize filesystem? (y/n): " -n 1 resize_fs
+        echo ""
+
+        if [[ $resize_fs =~ ^[Yy]$ ]]; then
+            sudo resize2fs "$lv_path" 2>/dev/null || sudo xfs_growfs "$lv_path" 2>/dev/null
+            echo -e "${BRIGHT_GREEN}✓ Filesystem resized${NC}"
+        fi
+    else
+        echo -e "${BRIGHT_RED}✗ Failed to extend LV${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+remove_lvm_component() {
+    clear
+    echo -e "${BRIGHT_CYAN}${BOLD}REMOVE LVM COMPONENT${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_YELLOW}What to remove?${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} Logical Volume"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} Volume Group"
+    echo -e "  ${BRIGHT_GREEN}[3]${NC} Physical Volume"
+    echo -e "  ${BRIGHT_RED}[0]${NC} Cancel"
+    echo ""
+    read -p "Choose: " -n 1 remove_type
+    echo ""
+    echo ""
+
+    case $remove_type in
+        1)
+            mapfile -t lvs < <(sudo lvs --noheadings -o lv_path 2>/dev/null)
+            if [ ${#lvs[@]} -eq 0 ]; then
+                echo -e "${YELLOW}No LVs found${NC}"
+            else
+                local i=1
+                for lv in "${lvs[@]}"; do
+                    printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$lv"
+                    ((i++))
+                done
+                echo ""
+                read -p "Enter LV number: " lv_num
+                if [[ "$lv_num" =~ ^[0-9]+$ ]] && [ "$lv_num" -ge 1 ] && [ "$lv_num" -le ${#lvs[@]} ]; then
+                    local lv_path="${lvs[$((lv_num-1))]}"
+                    echo ""
+                    echo -e "${BRIGHT_RED}⚠  Removing: $lv_path${NC}"
+                    read -p "Type 'yes' to confirm: " confirm
+                    if [ "$confirm" = "yes" ]; then
+                        sudo lvremove -f "$lv_path"
+                        [ $? -eq 0 ] && echo -e "${BRIGHT_GREEN}✓ Removed${NC}" || echo -e "${BRIGHT_RED}✗ Failed${NC}"
+                    fi
+                fi
+            fi
+            ;;
+        2)
+            mapfile -t vgs < <(sudo vgs --noheadings -o vg_name 2>/dev/null)
+            if [ ${#vgs[@]} -eq 0 ]; then
+                echo -e "${YELLOW}No VGs found${NC}"
+            else
+                local i=1
+                for vg in "${vgs[@]}"; do
+                    printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$vg"
+                    ((i++))
+                done
+                echo ""
+                read -p "Enter VG number: " vg_num
+                if [[ "$vg_num" =~ ^[0-9]+$ ]] && [ "$vg_num" -ge 1 ] && [ "$vg_num" -le ${#vgs[@]} ]; then
+                    local vg_name="${vgs[$((vg_num-1))]}"
+                    echo ""
+                    echo -e "${BRIGHT_RED}⚠  Removing: $vg_name${NC}"
+                    read -p "Type 'yes' to confirm: " confirm
+                    if [ "$confirm" = "yes" ]; then
+                        sudo vgremove -f "$vg_name"
+                        [ $? -eq 0 ] && echo -e "${BRIGHT_GREEN}✓ Removed${NC}" || echo -e "${BRIGHT_RED}✗ Failed${NC}"
+                    fi
+                fi
+            fi
+            ;;
+        3)
+            mapfile -t pvs < <(sudo pvs --noheadings -o pv_name 2>/dev/null)
+            if [ ${#pvs[@]} -eq 0 ]; then
+                echo -e "${YELLOW}No PVs found${NC}"
+            else
+                local i=1
+                for pv in "${pvs[@]}"; do
+                    printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$pv"
+                    ((i++))
+                done
+                echo ""
+                read -p "Enter PV number: " pv_num
+                if [[ "$pv_num" =~ ^[0-9]+$ ]] && [ "$pv_num" -ge 1 ] && [ "$pv_num" -le ${#pvs[@]} ]; then
+                    local pv_path="${pvs[$((pv_num-1))]}"
+                    echo ""
+                    echo -e "${BRIGHT_RED}⚠  Removing: $pv_path${NC}"
+                    read -p "Type 'yes' to confirm: " confirm
+                    if [ "$confirm" = "yes" ]; then
+                        sudo pvremove -f "$pv_path"
+                        [ $? -eq 0 ] && echo -e "${BRIGHT_GREEN}✓ Removed${NC}" || echo -e "${BRIGHT_RED}✗ Failed${NC}"
+                    fi
+                fi
+            fi
+            ;;
+    esac
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# ZFS Management
+manage_zfs() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_BLUE}💿 ${WHITE}${BOLD}ZFS MANAGEMENT${NC}                                            ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # Check if ZFS is installed
+    if ! command -v zfs &> /dev/null; then
+        echo -e "${YELLOW}ZFS tools not installed.${NC}"
+        echo ""
+        read -p "Would you like to install ZFS? (y/n): " -n 1 install_choice
+        echo ""
+
+        if [[ $install_choice =~ ^[Yy]$ ]]; then
+            PKG_MGR=$(detect_package_manager)
+            case $PKG_MGR in
+                apt)
+                    sudo apt install -y zfsutils-linux
+                    sudo modprobe zfs
+                    ;;
+                dnf|yum)
+                    echo -e "${YELLOW}Please install ZFS from https://openzfs.github.io/openzfs-docs/Getting%20Started/RHEL-based%20distro/index.html${NC}"
+                    read -p "Press Enter..."
+                    return
+                    ;;
+                *) echo -e "${RED}Could not install ZFS${NC}"; read -p "Press Enter..."; return ;;
+            esac
+        else
+            read -p "Press Enter to continue..."
+            return
+        fi
+    fi
+
+    echo -e "${BRIGHT_CYAN}ZFS Operations:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} View ZFS Pools ${DIM}(status and properties)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} Create ZFS Pool ${DIM}(wizard)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[3]${NC} Create Dataset ${DIM}(filesystem)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[4]${NC} Create Snapshot ${DIM}(point-in-time copy)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[5]${NC} List Snapshots"
+    echo -e "  ${BRIGHT_GREEN}[6]${NC} Rollback to Snapshot"
+    echo -e "  ${BRIGHT_GREEN}[7]${NC} Destroy Pool/Dataset/Snapshot"
+    echo -e "  ${BRIGHT_GREEN}[8]${NC} Import/Export Pool"
+    echo -e "  ${BRIGHT_RED}[0]${NC} Back"
+    echo ""
+    echo -e "${DIM}${BRIGHT_CYAN}───────────────────────────────────────────────────────────────${NC}"
+    echo -e "${BRIGHT_YELLOW}❯${NC} Press a number key: "
+
+    read -n 1 -s choice
+    echo ""
+
+    case $choice in
+        1) view_zfs_pools ;;
+        2) create_zpool_wizard ;;
+        3) create_dataset_wizard ;;
+        4) create_snapshot_wizard ;;
+        5) list_snapshots ;;
+        6) rollback_snapshot_wizard ;;
+        7) destroy_zfs_wizard ;;
+        8) import_export_pool ;;
+        0) return ;;
+    esac
+
+    manage_zfs
+}
+
+# View ZFS Pools
+view_zfs_pools() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_CYAN}📊 ${WHITE}${BOLD}ZFS POOL STATUS${NC}                                           ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    if ! sudo zpool list &>/dev/null; then
+        echo -e "${YELLOW}No ZFS pools found${NC}"
+    else
+        echo -e "${BRIGHT_YELLOW}┌─ ZFS Pools ──────────────────────────────────────────────────┐${NC}"
+        sudo zpool list
+        echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+        echo ""
+
+        echo -e "${BRIGHT_YELLOW}┌─ ZFS Datasets ───────────────────────────────────────────────┐${NC}"
+        sudo zfs list
+        echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Create ZFS Pool Wizard
+create_zpool_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_GREEN}🔧 ${WHITE}${BOLD}CREATE ZFS POOL - Wizard${NC}                                 ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # Auto-detect available disks
+    echo -e "${BRIGHT_CYAN}Auto-detecting available disks...${NC}"
+    echo ""
+
+    mapfile -t disks < <(lsblk -dpno NAME,SIZE,TYPE | grep disk | awk '{print $1 " (" $2 ")"}')
+
+    if [ ${#disks[@]} -eq 0 ]; then
+        echo -e "${RED}No available disks found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Disks ────────────────────────────────────────────┐${NC}"
+    local i=1
+    for disk in "${disks[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$disk"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    # Select pool type
+    echo -e "${BRIGHT_BLUE}Select ZFS Pool Type:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} Single Disk ${DIM}(no redundancy)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} Mirror ${DIM}(2+ disks, full redundancy)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[3]${NC} RAIDZ1 ${DIM}(3+ disks, 1 parity disk)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[4]${NC} RAIDZ2 ${DIM}(4+ disks, 2 parity disks)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[5]${NC} RAIDZ3 ${DIM}(5+ disks, 3 parity disks)${NC}"
+    echo ""
+    read -p "Enter pool type (0 to cancel): " pool_type
+
+    local vdev_type=""
+    local min_disks=1
+    case $pool_type in
+        1) vdev_type=""; min_disks=1 ;;
+        2) vdev_type="mirror"; min_disks=2 ;;
+        3) vdev_type="raidz"; min_disks=3 ;;
+        4) vdev_type="raidz2"; min_disks=4 ;;
+        5) vdev_type="raidz3"; min_disks=5 ;;
+        0) return ;;
+        *) echo -e "${RED}Invalid selection${NC}"; read -p "Press Enter..."; return ;;
+    esac
+
+    # Select disks
+    echo ""
+    echo -e "${BRIGHT_CYAN}Select disks for the pool (minimum $min_disks)${NC}"
+    echo -e "${DIM}Enter disk numbers separated by spaces (e.g., 1 2 3):${NC}"
+    read -p "> " disk_nums
+
+    local selected_disks=()
+    for num in $disk_nums; do
+        if [[ "$num" =~ ^[0-9]+$ ]] && [ "$num" -ge 1 ] && [ "$num" -le ${#disks[@]} ]; then
+            local disk_path=$(echo "${disks[$((num-1))]}" | awk '{print $1}')
+            selected_disks+=("$disk_path")
+        fi
+    done
+
+    if [ ${#selected_disks[@]} -lt $min_disks ]; then
+        echo -e "${RED}Need at least $min_disks disks for this pool type${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Pool name
+    echo ""
+    read -p "Enter pool name: " pool_name
+
+    if [ -z "$pool_name" ]; then
+        echo -e "${RED}Pool name cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Confirm
+    echo ""
+    echo -e "${BRIGHT_YELLOW}┌─ Configuration ──────────────────────────────────────────────┐${NC}"
+    echo -e "  Pool name: ${BRIGHT_CYAN}$pool_name${NC}"
+    echo -e "  Type: ${BRIGHT_CYAN}${vdev_type:-single}${NC}"
+    echo -e "  Disks: ${BRIGHT_CYAN}${selected_disks[*]}${NC}"
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+    echo -e "${BRIGHT_RED}⚠  WARNING: This will destroy all data on selected disks!${NC}"
+    read -p "Type 'yes' to confirm: " confirm
+
+    if [ "$confirm" != "yes" ]; then
+        echo -e "${YELLOW}Cancelled${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Create pool
+    echo ""
+    echo -e "${BRIGHT_CYAN}Creating ZFS pool...${NC}"
+
+    if [ -n "$vdev_type" ]; then
+        sudo zpool create "$pool_name" $vdev_type "${selected_disks[@]}"
+    else
+        sudo zpool create "$pool_name" "${selected_disks[@]}"
+    fi
+
+    if [ $? -eq 0 ]; then
+        echo -e "${BRIGHT_GREEN}✓ ZFS pool '$pool_name' created successfully${NC}"
+        sudo zpool status "$pool_name"
+    else
+        echo -e "${BRIGHT_RED}✗ Failed to create pool${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Create Dataset Wizard
+create_dataset_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_GREEN}📁 ${WHITE}${BOLD}CREATE ZFS DATASET${NC}                                        ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List available pools
+    mapfile -t pools < <(sudo zpool list -H -o name 2>/dev/null)
+
+    if [ ${#pools[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No ZFS pools found. Create a pool first.${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Pools ────────────────────────────────────────────┐${NC}"
+    local i=1
+    for pool in "${pools[@]}"; do
+        local size=$(sudo zpool list -H -o size "$pool")
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %-20s ${DIM}Size:${NC} ${BRIGHT_CYAN}%s${NC}\n" "$i" "$pool" "$size"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter pool number (0 to cancel): " pool_num
+
+    if [ -z "$pool_num" ] || [ "$pool_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$pool_num" =~ ^[0-9]+$ ]] || [ "$pool_num" -lt 1 ] || [ "$pool_num" -gt ${#pools[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local pool_name="${pools[$((pool_num-1))]}"
+
+    # Dataset name
+    echo ""
+    read -p "Enter dataset name (e.g., data): " dataset_name
+
+    if [ -z "$dataset_name" ]; then
+        echo -e "${RED}Dataset name cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Optional: Set quota
+    echo ""
+    read -p "Set quota? (e.g., 100G, or press Enter to skip): " quota
+
+    # Create dataset
+    echo ""
+    echo -e "${BRIGHT_CYAN}Creating dataset...${NC}"
+
+    sudo zfs create "$pool_name/$dataset_name"
+
+    if [ $? -eq 0 ]; then
+        if [ -n "$quota" ]; then
+            sudo zfs set quota="$quota" "$pool_name/$dataset_name"
+        fi
+        echo -e "${BRIGHT_GREEN}✓ Dataset '$pool_name/$dataset_name' created successfully${NC}"
+        sudo zfs list "$pool_name/$dataset_name"
+    else
+        echo -e "${BRIGHT_RED}✗ Failed to create dataset${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Create Snapshot Wizard
+create_snapshot_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_GREEN}📸 ${WHITE}${BOLD}CREATE ZFS SNAPSHOT${NC}                                       ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List datasets
+    mapfile -t datasets < <(sudo zfs list -H -o name 2>/dev/null)
+
+    if [ ${#datasets[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No ZFS datasets found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Datasets ─────────────────────────────────────────┐${NC}"
+    local i=1
+    for dataset in "${datasets[@]}"; do
+        local used=$(sudo zfs list -H -o used "$dataset")
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %-30s ${DIM}Used:${NC} ${BRIGHT_CYAN}%s${NC}\n" "$i" "$dataset" "$used"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter dataset number (0 to cancel): " dataset_num
+
+    if [ -z "$dataset_num" ] || [ "$dataset_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$dataset_num" =~ ^[0-9]+$ ]] || [ "$dataset_num" -lt 1 ] || [ "$dataset_num" -gt ${#datasets[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local dataset_name="${datasets[$((dataset_num-1))]}"
+
+    # Snapshot name
+    echo ""
+    read -p "Enter snapshot name (e.g., backup-$(date +%Y%m%d)): " snap_name
+
+    if [ -z "$snap_name" ]; then
+        echo -e "${RED}Snapshot name cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Create snapshot
+    echo ""
+    echo -e "${BRIGHT_CYAN}Creating snapshot...${NC}"
+
+    sudo zfs snapshot "$dataset_name@$snap_name"
+
+    if [ $? -eq 0 ]; then
+        echo -e "${BRIGHT_GREEN}✓ Snapshot '$dataset_name@$snap_name' created successfully${NC}"
+    else
+        echo -e "${BRIGHT_RED}✗ Failed to create snapshot${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# List Snapshots
+list_snapshots() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_CYAN}📸 ${WHITE}${BOLD}ZFS SNAPSHOTS${NC}                                             ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    if ! sudo zfs list -t snapshot &>/dev/null; then
+        echo -e "${YELLOW}No snapshots found${NC}"
+    else
+        echo -e "${BRIGHT_YELLOW}┌─ Snapshots ──────────────────────────────────────────────────┐${NC}"
+        sudo zfs list -t snapshot
+        echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Rollback to Snapshot Wizard
+rollback_snapshot_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_YELLOW}⏮ ${WHITE}${BOLD}ROLLBACK TO SNAPSHOT${NC}                                      ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List snapshots
+    mapfile -t snapshots < <(sudo zfs list -H -t snapshot -o name 2>/dev/null)
+
+    if [ ${#snapshots[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No snapshots found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Snapshots ────────────────────────────────────────┐${NC}"
+    local i=1
+    for snapshot in "${snapshots[@]}"; do
+        local created=$(sudo zfs list -H -t snapshot -o creation "$snapshot")
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %-40s ${DIM}%s${NC}\n" "$i" "$snapshot" "$created"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter snapshot number (0 to cancel): " snap_num
+
+    if [ -z "$snap_num" ] || [ "$snap_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$snap_num" =~ ^[0-9]+$ ]] || [ "$snap_num" -lt 1 ] || [ "$snap_num" -gt ${#snapshots[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local snapshot_name="${snapshots[$((snap_num-1))]}"
+
+    # Confirm
+    echo ""
+    echo -e "${BRIGHT_RED}⚠  WARNING: This will discard all changes since this snapshot!${NC}"
+    read -p "Type 'yes' to confirm rollback: " confirm
+
+    if [ "$confirm" != "yes" ]; then
+        echo -e "${YELLOW}Cancelled${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Rollback
+    echo ""
+    echo -e "${BRIGHT_CYAN}Rolling back to snapshot...${NC}"
+
+    sudo zfs rollback -r "$snapshot_name"
+
+    if [ $? -eq 0 ]; then
+        echo -e "${BRIGHT_GREEN}✓ Rolled back to '$snapshot_name' successfully${NC}"
+    else
+        echo -e "${BRIGHT_RED}✗ Failed to rollback${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Destroy ZFS Wizard
+destroy_zfs_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_RED}🗑 ${WHITE}${BOLD}DESTROY ZFS COMPONENT${NC}                                      ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_CYAN}What would you like to destroy?${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} Snapshot"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} Dataset"
+    echo -e "  ${BRIGHT_GREEN}[3]${NC} Pool"
+    echo -e "  ${BRIGHT_RED}[0]${NC} Cancel"
+    echo ""
+    read -p "Select type: " destroy_type
+
+    case $destroy_type in
+        1)
+            # Destroy snapshot
+            mapfile -t items < <(sudo zfs list -H -t snapshot -o name 2>/dev/null)
+            local item_type="snapshot"
+            ;;
+        2)
+            # Destroy dataset
+            mapfile -t items < <(sudo zfs list -H -o name 2>/dev/null)
+            local item_type="dataset"
+            ;;
+        3)
+            # Destroy pool
+            mapfile -t items < <(sudo zpool list -H -o name 2>/dev/null)
+            local item_type="pool"
+            ;;
+        0) return ;;
+        *) echo -e "${RED}Invalid selection${NC}"; read -p "Press Enter..."; return ;;
+    esac
+
+    if [ ${#items[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No ${item_type}s found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo ""
+    echo -e "${BRIGHT_YELLOW}┌─ Available ${item_type^}s ─────────────────────────────────────────┐${NC}"
+    local i=1
+    for item in "${items[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$item"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter ${item_type} number (0 to cancel): " item_num
+
+    if [ -z "$item_num" ] || [ "$item_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$item_num" =~ ^[0-9]+$ ]] || [ "$item_num" -lt 1 ] || [ "$item_num" -gt ${#items[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local item_name="${items[$((item_num-1))]}"
+
+    # Confirm
+    echo ""
+    echo -e "${BRIGHT_RED}⚠  WARNING: This action cannot be undone!${NC}"
+    echo -e "Destroying: ${BRIGHT_CYAN}$item_name${NC}"
+    read -p "Type 'yes' to confirm: " confirm
+
+    if [ "$confirm" != "yes" ]; then
+        echo -e "${YELLOW}Cancelled${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Destroy
+    echo ""
+    echo -e "${BRIGHT_CYAN}Destroying ${item_type}...${NC}"
+
+    case $destroy_type in
+        3)
+            sudo zpool destroy "$item_name"
+            ;;
+        *)
+            sudo zfs destroy -r "$item_name"
+            ;;
+    esac
+
+    if [ $? -eq 0 ]; then
+        echo -e "${BRIGHT_GREEN}✓ Destroyed successfully${NC}"
+    else
+        echo -e "${BRIGHT_RED}✗ Failed to destroy${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Import/Export Pool
+import_export_pool() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_BLUE}🔄 ${WHITE}${BOLD}IMPORT/EXPORT ZFS POOL${NC}                                    ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_CYAN}Select operation:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} Import Pool"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} Export Pool"
+    echo -e "  ${BRIGHT_RED}[0]${NC} Cancel"
+    echo ""
+    read -p "Select: " operation
+
+    case $operation in
+        1)
+            # Import pool
+            echo ""
+            echo -e "${BRIGHT_CYAN}Scanning for importable pools...${NC}"
+            sudo zpool import
+            echo ""
+            read -p "Enter pool name to import (or 0 to cancel): " pool_name
+
+            if [ "$pool_name" != "0" ] && [ -n "$pool_name" ]; then
+                sudo zpool import "$pool_name"
+                [ $? -eq 0 ] && echo -e "${BRIGHT_GREEN}✓ Pool imported${NC}" || echo -e "${BRIGHT_RED}✗ Failed${NC}"
+            fi
+            ;;
+        2)
+            # Export pool
+            mapfile -t pools < <(sudo zpool list -H -o name 2>/dev/null)
+
+            if [ ${#pools[@]} -eq 0 ]; then
+                echo -e "${YELLOW}No pools to export${NC}"
+                read -p "Press Enter..."; return
+            fi
+
+            echo ""
+            echo -e "${BRIGHT_YELLOW}┌─ Active Pools ───────────────────────────────────────────────┐${NC}"
+            local i=1
+            for pool in "${pools[@]}"; do
+                printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$pool"
+                ((i++))
+            done
+            echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+            echo ""
+
+            read -p "Enter pool number (0 to cancel): " pool_num
+
+            if [ "$pool_num" -gt 0 ] 2>/dev/null && [ "$pool_num" -le ${#pools[@]} ]; then
+                local pool_name="${pools[$((pool_num-1))]}"
+                echo ""
+                read -p "Export pool '$pool_name'? (y/n): " -n 1 confirm
+                echo ""
+
+                if [[ $confirm =~ ^[Yy]$ ]]; then
+                    sudo zpool export "$pool_name"
+                    [ $? -eq 0 ] && echo -e "${BRIGHT_GREEN}✓ Pool exported${NC}" || echo -e "${BRIGHT_RED}✗ Failed${NC}"
+                fi
+            fi
+            ;;
+        0) return ;;
+    esac
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Disk Partitioning
+manage_partitioning() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_BLUE}🔧 ${WHITE}${BOLD}DISK PARTITIONING${NC}                                         ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_CYAN}Partitioning Operations:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} List Disks & Partitions ${DIM}(lsblk)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} Partition Disk ${DIM}(fdisk - wizard)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[3]${NC} Partition Disk ${DIM}(parted - wizard)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[4]${NC} View Partition Details ${DIM}(detailed info)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[5]${NC} Delete Partition ${DIM}(wizard)${NC}"
+    echo -e "  ${BRIGHT_RED}[0]${NC} Back"
+    echo ""
+    echo -e "${DIM}${BRIGHT_CYAN}───────────────────────────────────────────────────────────────${NC}"
+    echo -e "${BRIGHT_YELLOW}❯${NC} Press a number key: "
+
+    read -n 1 -s choice
+    echo ""
+
+    case $choice in
+        1) list_disks_partitions ;;
+        2) partition_fdisk_wizard ;;
+        3) partition_parted_wizard ;;
+        4) view_partition_details ;;
+        5) delete_partition_wizard ;;
+        0) return ;;
+    esac
+
+    manage_partitioning
+}
+
+# List Disks & Partitions
+list_disks_partitions() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_CYAN}💿 ${WHITE}${BOLD}DISKS & PARTITIONS${NC}                                        ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_YELLOW}┌─ Block Devices ──────────────────────────────────────────────┐${NC}"
+    lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT,MODEL
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Partition Disk with fdisk Wizard
+partition_fdisk_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_GREEN}🔧 ${WHITE}${BOLD}PARTITION DISK (fdisk)${NC}                                    ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List available disks
+    mapfile -t disks < <(lsblk -dpno NAME,SIZE,TYPE | grep disk | awk '{print $1 " (" $2 ")"}')
+
+    if [ ${#disks[@]} -eq 0 ]; then
+        echo -e "${RED}No disks found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Disks ────────────────────────────────────────────┐${NC}"
+    local i=1
+    for disk in "${disks[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$disk"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter disk number (0 to cancel): " disk_num
+
+    if [ -z "$disk_num" ] || [ "$disk_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$disk_num" =~ ^[0-9]+$ ]] || [ "$disk_num" -lt 1 ] || [ "$disk_num" -gt ${#disks[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local disk_path=$(echo "${disks[$((disk_num-1))]}" | awk '{print $1}')
+
+    # Show current partition table
+    echo ""
+    echo -e "${BRIGHT_CYAN}Current partition table for $disk_path:${NC}"
+    sudo fdisk -l "$disk_path"
+
+    echo ""
+    echo -e "${BRIGHT_RED}⚠  WARNING: Incorrect partitioning can result in data loss!${NC}"
+    read -p "Continue with fdisk on $disk_path? (y/n): " -n 1 confirm
+    echo ""
+
+    if ! [[ $confirm =~ ^[Yy]$ ]]; then
+        echo -e "${YELLOW}Cancelled${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Launch fdisk interactively
+    echo ""
+    echo -e "${BRIGHT_CYAN}Launching fdisk...${NC}"
+    echo -e "${DIM}Common commands: p(print), n(new), d(delete), t(type), w(write), q(quit)${NC}"
+    echo ""
+    sleep 2
+
+    sudo fdisk "$disk_path"
+
+    echo ""
+    echo -e "${BRIGHT_GREEN}✓ fdisk session completed${NC}"
+    read -p "Press Enter to continue..."
+}
+
+# Partition Disk with parted Wizard
+partition_parted_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_GREEN}🔧 ${WHITE}${BOLD}PARTITION DISK (parted)${NC}                                   ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # Check if parted is installed
+    if ! command -v parted &> /dev/null; then
+        echo -e "${YELLOW}parted not installed.${NC}"
+        echo ""
+        read -p "Would you like to install parted? (y/n): " -n 1 install_choice
+        echo ""
+
+        if [[ $install_choice =~ ^[Yy]$ ]]; then
+            PKG_MGR=$(detect_package_manager)
+            case $PKG_MGR in
+                apt) sudo apt install -y parted ;;
+                dnf) sudo dnf install -y parted ;;
+                yum) sudo yum install -y parted ;;
+                *) echo -e "${RED}Could not install parted${NC}"; read -p "Press Enter..."; return ;;
+            esac
+        else
+            read -p "Press Enter to continue..."
+            return
+        fi
+    fi
+
+    # List available disks
+    mapfile -t disks < <(lsblk -dpno NAME,SIZE,TYPE | grep disk | awk '{print $1 " (" $2 ")"}')
+
+    if [ ${#disks[@]} -eq 0 ]; then
+        echo -e "${RED}No disks found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Disks ────────────────────────────────────────────┐${NC}"
+    local i=1
+    for disk in "${disks[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$disk"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter disk number (0 to cancel): " disk_num
+
+    if [ -z "$disk_num" ] || [ "$disk_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$disk_num" =~ ^[0-9]+$ ]] || [ "$disk_num" -lt 1 ] || [ "$disk_num" -gt ${#disks[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local disk_path=$(echo "${disks[$((disk_num-1))]}" | awk '{print $1}')
+
+    # Show current partition table
+    echo ""
+    echo -e "${BRIGHT_CYAN}Current partition table for $disk_path:${NC}"
+    sudo parted "$disk_path" print
+
+    echo ""
+    echo -e "${BRIGHT_RED}⚠  WARNING: Incorrect partitioning can result in data loss!${NC}"
+    read -p "Continue with parted on $disk_path? (y/n): " -n 1 confirm
+    echo ""
+
+    if ! [[ $confirm =~ ^[Yy]$ ]]; then
+        echo -e "${YELLOW}Cancelled${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Launch parted interactively
+    echo ""
+    echo -e "${BRIGHT_CYAN}Launching parted...${NC}"
+    echo -e "${DIM}Common commands: print, mklabel, mkpart, rm, quit${NC}"
+    echo ""
+    sleep 2
+
+    sudo parted "$disk_path"
+
+    echo ""
+    echo -e "${BRIGHT_GREEN}✓ parted session completed${NC}"
+    read -p "Press Enter to continue..."
+}
+
+# View Partition Details
+view_partition_details() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_CYAN}📊 ${WHITE}${BOLD}PARTITION DETAILS${NC}                                         ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List all partitions
+    mapfile -t partitions < <(lsblk -pno NAME,SIZE,TYPE | grep part | awk '{print $1 " (" $2 ")"}')
+
+    if [ ${#partitions[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No partitions found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Partitions ───────────────────────────────────────┐${NC}"
+    local i=1
+    for partition in "${partitions[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$partition"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter partition number to view details (0 to cancel): " part_num
+
+    if [ -z "$part_num" ] || [ "$part_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$part_num" =~ ^[0-9]+$ ]] || [ "$part_num" -lt 1 ] || [ "$part_num" -gt ${#partitions[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local partition_path=$(echo "${partitions[$((part_num-1))]}" | awk '{print $1}')
+
+    echo ""
+    echo -e "${BRIGHT_CYAN}Detailed information for $partition_path:${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_YELLOW}Block device info:${NC}"
+    lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT,UUID,LABEL "$partition_path"
+
+    echo ""
+    echo -e "${BRIGHT_YELLOW}Filesystem info:${NC}"
+    sudo blkid "$partition_path"
+
+    if command -v parted &> /dev/null; then
+        echo ""
+        echo -e "${BRIGHT_YELLOW}Partition table info:${NC}"
+        local disk_path=$(echo "$partition_path" | sed 's/[0-9]*$//')
+        sudo parted "$disk_path" print | grep -A 1 "Number"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Delete Partition Wizard
+delete_partition_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_RED}🗑 ${WHITE}${BOLD}DELETE PARTITION${NC}                                          ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List all partitions
+    mapfile -t partitions < <(lsblk -pno NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT | grep part)
+
+    if [ ${#partitions[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No partitions found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Partitions ───────────────────────────────────────┐${NC}"
+    local i=1
+    for partition in "${partitions[@]}"; do
+        local part_name=$(echo "$partition" | awk '{print $1}')
+        local part_size=$(echo "$partition" | awk '{print $2}')
+        local part_fs=$(echo "$partition" | awk '{print $4}')
+        local part_mount=$(echo "$partition" | awk '{print $5}')
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %-15s ${DIM}Size:${NC}%-8s ${DIM}FS:${NC}%-8s ${DIM}Mount:${NC}%s\n" "$i" "$part_name" "$part_size" "${part_fs:--}" "${part_mount:--}"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter partition number (0 to cancel): " part_num
+
+    if [ -z "$part_num" ] || [ "$part_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$part_num" =~ ^[0-9]+$ ]] || [ "$part_num" -lt 1 ] || [ "$part_num" -gt ${#partitions[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local partition_info="${partitions[$((part_num-1))]}"
+    local partition_path=$(echo "$partition_info" | awk '{print $1}')
+    local partition_mount=$(echo "$partition_info" | awk '{print $5}')
+
+    # Check if mounted
+    if [ -n "$partition_mount" ] && [ "$partition_mount" != "-" ]; then
+        echo ""
+        echo -e "${BRIGHT_RED}⚠  Partition is currently mounted at: $partition_mount${NC}"
+        read -p "Unmount first? (y/n): " -n 1 unmount_choice
+        echo ""
+
+        if [[ $unmount_choice =~ ^[Yy]$ ]]; then
+            sudo umount "$partition_path"
+            if [ $? -ne 0 ]; then
+                echo -e "${RED}Failed to unmount partition${NC}"
+                read -p "Press Enter to continue..."
+                return
+            fi
+            echo -e "${BRIGHT_GREEN}✓ Unmounted${NC}"
+        else
+            echo -e "${YELLOW}Cancelled - partition is still mounted${NC}"
+            read -p "Press Enter to continue..."
+            return
+        fi
+    fi
+
+    # Confirm deletion
+    echo ""
+    echo -e "${BRIGHT_RED}⚠  WARNING: This will permanently delete the partition and all data on it!${NC}"
+    echo -e "Partition: ${BRIGHT_CYAN}$partition_path${NC}"
+    read -p "Type 'yes' to confirm deletion: " confirm
+
+    if [ "$confirm" != "yes" ]; then
+        echo -e "${YELLOW}Cancelled${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Get partition number and disk
+    local part_number=$(echo "$partition_path" | grep -o '[0-9]*$')
+    local disk_path=$(echo "$partition_path" | sed 's/[0-9]*$//')
+
+    # Delete using parted
+    echo ""
+    echo -e "${BRIGHT_CYAN}Deleting partition...${NC}"
+
+    if command -v parted &> /dev/null; then
+        sudo parted "$disk_path" rm "$part_number"
+        if [ $? -eq 0 ]; then
+            echo -e "${BRIGHT_GREEN}✓ Partition deleted successfully${NC}"
+            sudo partprobe "$disk_path" 2>/dev/null
+        else
+            echo -e "${BRIGHT_RED}✗ Failed to delete partition${NC}"
+        fi
+    else
+        echo -e "${YELLOW}parted not found. Use fdisk manually to delete partition.${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Filesystem Operations
+manage_filesystems() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_BLUE}📁 ${WHITE}${BOLD}FILESYSTEM OPERATIONS${NC}                                     ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_CYAN}Filesystem Operations:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} Create Filesystem ${DIM}(mkfs - wizard)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} Check/Repair Filesystem ${DIM}(fsck)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[3]${NC} Resize Filesystem ${DIM}(resize2fs/xfs_growfs)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[4]${NC} View Filesystem Info ${DIM}(detailed)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[5]${NC} Set Filesystem Label"
+    echo -e "  ${BRIGHT_GREEN}[6]${NC} Tune Filesystem ${DIM}(tune2fs)${NC}"
+    echo -e "  ${BRIGHT_RED}[0]${NC} Back"
+    echo ""
+    echo -e "${DIM}${BRIGHT_CYAN}───────────────────────────────────────────────────────────────${NC}"
+    echo -e "${BRIGHT_YELLOW}❯${NC} Press a number key: "
+
+    read -n 1 -s choice
+    echo ""
+
+    case $choice in
+        1) create_filesystem_wizard ;;
+        2) check_repair_filesystem ;;
+        3) resize_filesystem_wizard ;;
+        4) view_filesystem_info ;;
+        5) set_filesystem_label ;;
+        6) tune_filesystem ;;
+        0) return ;;
+    esac
+
+    manage_filesystems
+}
+
+# Create Filesystem Wizard
+create_filesystem_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_GREEN}🔧 ${WHITE}${BOLD}CREATE FILESYSTEM${NC}                                         ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List partitions without filesystems or all partitions
+    mapfile -t partitions < <(lsblk -pno NAME,SIZE,TYPE,FSTYPE | grep -E 'part|lvm' | awk '{print $1 " (" $2 ") [" ($4 ? $4 : "none") "]"}')
+
+    if [ ${#partitions[@]} -eq 0 ]; then
+        echo -e "${RED}No partitions found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Partitions ───────────────────────────────────────┐${NC}"
+    local i=1
+    for partition in "${partitions[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$partition"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter partition number (0 to cancel): " part_num
+
+    if [ -z "$part_num" ] || [ "$part_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$part_num" =~ ^[0-9]+$ ]] || [ "$part_num" -lt 1 ] || [ "$part_num" -gt ${#partitions[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local partition_path=$(echo "${partitions[$((part_num-1))]}" | awk '{print $1}')
+
+    # Select filesystem type
+    echo ""
+    echo -e "${BRIGHT_BLUE}Select Filesystem Type:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} ext4 ${DIM}(default Linux filesystem)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} ext3 ${DIM}(legacy Linux)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[3]${NC} xfs ${DIM}(high performance)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[4]${NC} btrfs ${DIM}(advanced features)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[5]${NC} vfat/FAT32 ${DIM}(USB/compatibility)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[6]${NC} ntfs ${DIM}(Windows compatibility)${NC}"
+    echo ""
+    read -p "Enter filesystem type (0 to cancel): " fs_type
+
+    local mkfs_cmd=""
+    case $fs_type in
+        1) mkfs_cmd="mkfs.ext4" ;;
+        2) mkfs_cmd="mkfs.ext3" ;;
+        3) mkfs_cmd="mkfs.xfs" ;;
+        4) mkfs_cmd="mkfs.btrfs" ;;
+        5) mkfs_cmd="mkfs.vfat" ;;
+        6) mkfs_cmd="mkfs.ntfs" ;;
+        0) return ;;
+        *) echo -e "${RED}Invalid selection${NC}"; read -p "Press Enter..."; return ;;
+    esac
+
+    # Check if tool is available
+    if ! command -v "$mkfs_cmd" &> /dev/null; then
+        echo -e "${YELLOW}$mkfs_cmd not installed.${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Optional label
+    echo ""
+    read -p "Enter filesystem label (or press Enter to skip): " fs_label
+
+    # Confirm
+    echo ""
+    echo -e "${BRIGHT_RED}⚠  WARNING: This will destroy all data on $partition_path!${NC}"
+    echo -e "Filesystem: ${BRIGHT_CYAN}$mkfs_cmd${NC}"
+    if [ -n "$fs_label" ]; then
+        echo -e "Label: ${BRIGHT_CYAN}$fs_label${NC}"
+    fi
+    read -p "Type 'yes' to confirm: " confirm
+
+    if [ "$confirm" != "yes" ]; then
+        echo -e "${YELLOW}Cancelled${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Create filesystem
+    echo ""
+    echo -e "${BRIGHT_CYAN}Creating filesystem...${NC}"
+
+    if [ -n "$fs_label" ]; then
+        sudo "$mkfs_cmd" -L "$fs_label" "$partition_path"
+    else
+        sudo "$mkfs_cmd" "$partition_path"
+    fi
+
+    if [ $? -eq 0 ]; then
+        echo -e "${BRIGHT_GREEN}✓ Filesystem created successfully${NC}"
+        sudo blkid "$partition_path"
+    else
+        echo -e "${BRIGHT_RED}✗ Failed to create filesystem${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Check/Repair Filesystem
+check_repair_filesystem() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_YELLOW}🔍 ${WHITE}${BOLD}CHECK/REPAIR FILESYSTEM${NC}                                   ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List partitions with filesystems
+    mapfile -t partitions < <(lsblk -pno NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT | grep -E 'part|lvm' | grep -v 'swap')
+
+    if [ ${#partitions[@]} -eq 0 ]; then
+        echo -e "${RED}No partitions found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Partitions ───────────────────────────────────────┐${NC}"
+    local i=1
+    for partition in "${partitions[@]}"; do
+        local part_name=$(echo "$partition" | awk '{print $1}')
+        local part_size=$(echo "$partition" | awk '{print $2}')
+        local part_fs=$(echo "$partition" | awk '{print $4}')
+        local part_mount=$(echo "$partition" | awk '{print $5}')
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %-15s ${DIM}Size:${NC}%-8s ${DIM}FS:${NC}%-8s ${DIM}Mount:${NC}%s\n" "$i" "$part_name" "$part_size" "${part_fs:--}" "${part_mount:--}"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter partition number (0 to cancel): " part_num
+
+    if [ -z "$part_num" ] || [ "$part_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$part_num" =~ ^[0-9]+$ ]] || [ "$part_num" -lt 1 ] || [ "$part_num" -gt ${#partitions[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local partition_info="${partitions[$((part_num-1))]}"
+    local partition_path=$(echo "$partition_info" | awk '{print $1}')
+    local partition_mount=$(echo "$partition_info" | awk '{print $5}')
+
+    # Check if mounted
+    if [ -n "$partition_mount" ] && [ "$partition_mount" != "-" ]; then
+        echo ""
+        echo -e "${BRIGHT_RED}⚠  Partition must be unmounted for fsck${NC}"
+        echo -e "Currently mounted at: $partition_mount"
+        read -p "Unmount now? (y/n): " -n 1 unmount_choice
+        echo ""
+
+        if [[ $unmount_choice =~ ^[Yy]$ ]]; then
+            sudo umount "$partition_path"
+            if [ $? -ne 0 ]; then
+                echo -e "${RED}Failed to unmount partition${NC}"
+                read -p "Press Enter to continue..."
+                return
+            fi
+            echo -e "${BRIGHT_GREEN}✓ Unmounted${NC}"
+        else
+            echo -e "${YELLOW}Cancelled${NC}"
+            read -p "Press Enter to continue..."
+            return
+        fi
+    fi
+
+    # Run fsck
+    echo ""
+    echo -e "${BRIGHT_CYAN}Running filesystem check...${NC}"
+    echo -e "${DIM}(This may take a while depending on filesystem size)${NC}"
+    echo ""
+
+    sudo fsck -f "$partition_path"
+
+    echo ""
+    if [ $? -eq 0 ]; then
+        echo -e "${BRIGHT_GREEN}✓ Filesystem check completed${NC}"
+    else
+        echo -e "${BRIGHT_YELLOW}⚠  Filesystem check completed with warnings/repairs${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Resize Filesystem Wizard
+resize_filesystem_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_GREEN}📏 ${WHITE}${BOLD}RESIZE FILESYSTEM${NC}                                         ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List partitions with filesystems
+    mapfile -t partitions < <(lsblk -pno NAME,SIZE,TYPE,FSTYPE | grep -E 'part|lvm' | awk '{if ($4 != "" && $4 != "swap") print $1 " (" $2 ") [" $4 "]"}')
+
+    if [ ${#partitions[@]} -eq 0 ]; then
+        echo -e "${RED}No partitions with filesystems found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Partitions ───────────────────────────────────────┐${NC}"
+    local i=1
+    for partition in "${partitions[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$partition"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter partition number (0 to cancel): " part_num
+
+    if [ -z "$part_num" ] || [ "$part_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$part_num" =~ ^[0-9]+$ ]] || [ "$part_num" -lt 1 ] || [ "$part_num" -gt ${#partitions[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local partition_info="${partitions[$((part_num-1))]}"
+    local partition_path=$(echo "$partition_info" | awk '{print $1}')
+    local fs_type=$(lsblk -no FSTYPE "$partition_path")
+
+    echo ""
+    echo -e "${BRIGHT_CYAN}Partition: ${WHITE}$partition_path${NC}"
+    echo -e "${BRIGHT_CYAN}Filesystem: ${WHITE}$fs_type${NC}"
+    echo ""
+
+    case $fs_type in
+        ext[234])
+            echo -e "${BRIGHT_YELLOW}Note: For ext filesystems, resize to match partition size automatically${NC}"
+            read -p "Continue? (y/n): " -n 1 confirm
+            echo ""
+
+            if ! [[ $confirm =~ ^[Yy]$ ]]; then
+                return
+            fi
+
+            echo ""
+            echo -e "${BRIGHT_CYAN}Resizing filesystem...${NC}"
+            sudo resize2fs "$partition_path"
+            ;;
+        xfs)
+            local mount_point=$(lsblk -no MOUNTPOINT "$partition_path")
+            if [ -z "$mount_point" ]; then
+                echo -e "${YELLOW}XFS filesystems must be mounted to resize${NC}"
+                read -p "Press Enter to continue..."
+                return
+            fi
+
+            read -p "Resize XFS filesystem? (y/n): " -n 1 confirm
+            echo ""
+
+            if ! [[ $confirm =~ ^[Yy]$ ]]; then
+                return
+            fi
+
+            echo ""
+            echo -e "${BRIGHT_CYAN}Resizing filesystem...${NC}"
+            sudo xfs_growfs "$mount_point"
+            ;;
+        btrfs)
+            local mount_point=$(lsblk -no MOUNTPOINT "$partition_path")
+            if [ -z "$mount_point" ]; then
+                echo -e "${YELLOW}Btrfs filesystems must be mounted to resize${NC}"
+                read -p "Press Enter to continue..."
+                return
+            fi
+
+            read -p "Resize to max? (y/n): " -n 1 confirm
+            echo ""
+
+            if ! [[ $confirm =~ ^[Yy]$ ]]; then
+                return
+            fi
+
+            echo ""
+            echo -e "${BRIGHT_CYAN}Resizing filesystem...${NC}"
+            sudo btrfs filesystem resize max "$mount_point"
+            ;;
+        *)
+            echo -e "${YELLOW}Resize not supported for $fs_type${NC}"
+            read -p "Press Enter to continue..."
+            return
+            ;;
+    esac
+
+    if [ $? -eq 0 ]; then
+        echo -e "${BRIGHT_GREEN}✓ Filesystem resized successfully${NC}"
+    else
+        echo -e "${BRIGHT_RED}✗ Failed to resize filesystem${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# View Filesystem Info
+view_filesystem_info() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_CYAN}📊 ${WHITE}${BOLD}FILESYSTEM INFORMATION${NC}                                    ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List partitions with filesystems
+    mapfile -t partitions < <(lsblk -pno NAME,SIZE,FSTYPE | grep -E 'part|lvm' | awk '{if ($3 != "" && $3 != "swap") print $1 " (" $2 ") [" $3 "]"}')
+
+    if [ ${#partitions[@]} -eq 0 ]; then
+        echo -e "${RED}No partitions with filesystems found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Partitions ───────────────────────────────────────┐${NC}"
+    local i=1
+    for partition in "${partitions[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$partition"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter partition number (0 to cancel): " part_num
+
+    if [ -z "$part_num" ] || [ "$part_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$part_num" =~ ^[0-9]+$ ]] || [ "$part_num" -lt 1 ] || [ "$part_num" -gt ${#partitions[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local partition_path=$(echo "${partitions[$((part_num-1))]}" | awk '{print $1}')
+    local fs_type=$(lsblk -no FSTYPE "$partition_path")
+
+    echo ""
+    echo -e "${BRIGHT_CYAN}Filesystem Information for $partition_path:${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_YELLOW}Basic Info:${NC}"
+    sudo blkid "$partition_path"
+    echo ""
+
+    echo -e "${BRIGHT_YELLOW}Block Device Info:${NC}"
+    lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT,UUID,LABEL "$partition_path"
+    echo ""
+
+    case $fs_type in
+        ext[234])
+            echo -e "${BRIGHT_YELLOW}Ext Filesystem Details:${NC}"
+            sudo tune2fs -l "$partition_path" | grep -E "Filesystem|Block|Inode|Created|Last"
+            ;;
+        xfs)
+            echo -e "${BRIGHT_YELLOW}XFS Filesystem Details:${NC}"
+            sudo xfs_info "$partition_path" 2>/dev/null || echo "Mount to view detailed info"
+            ;;
+        btrfs)
+            echo -e "${BRIGHT_YELLOW}Btrfs Filesystem Details:${NC}"
+            sudo btrfs filesystem show "$partition_path" 2>/dev/null || echo "Btrfs info unavailable"
+            ;;
+    esac
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Set Filesystem Label
+set_filesystem_label() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_GREEN}🏷 ${WHITE}${BOLD}SET FILESYSTEM LABEL${NC}                                      ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List partitions with filesystems
+    mapfile -t partitions < <(lsblk -pno NAME,SIZE,FSTYPE,LABEL | grep -E 'part|lvm' | awk '{if ($3 != "" && $3 != "swap") print $1 " (" $2 ") [" $3 "] - Current: " ($4 ? $4 : "none")}')
+
+    if [ ${#partitions[@]} -eq 0 ]; then
+        echo -e "${RED}No partitions with filesystems found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Partitions ───────────────────────────────────────┐${NC}"
+    local i=1
+    for partition in "${partitions[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$partition"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter partition number (0 to cancel): " part_num
+
+    if [ -z "$part_num" ] || [ "$part_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$part_num" =~ ^[0-9]+$ ]] || [ "$part_num" -lt 1 ] || [ "$part_num" -gt ${#partitions[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local partition_path=$(lsblk -pno NAME,SIZE,FSTYPE,LABEL | grep -E 'part|lvm' | sed -n "${part_num}p" | awk '{print $1}')
+    local fs_type=$(lsblk -no FSTYPE "$partition_path")
+
+    echo ""
+    read -p "Enter new label: " new_label
+
+    if [ -z "$new_label" ]; then
+        echo -e "${RED}Label cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo ""
+    echo -e "${BRIGHT_CYAN}Setting label...${NC}"
+
+    case $fs_type in
+        ext[234])
+            sudo e2label "$partition_path" "$new_label"
+            ;;
+        xfs)
+            sudo xfs_admin -L "$new_label" "$partition_path"
+            ;;
+        vfat|fat)
+            sudo fatlabel "$partition_path" "$new_label"
+            ;;
+        ntfs)
+            sudo ntfslabel "$partition_path" "$new_label"
+            ;;
+        *)
+            echo -e "${YELLOW}Label setting not supported for $fs_type${NC}"
+            read -p "Press Enter to continue..."
+            return
+            ;;
+    esac
+
+    if [ $? -eq 0 ]; then
+        echo -e "${BRIGHT_GREEN}✓ Label set successfully${NC}"
+    else
+        echo -e "${BRIGHT_RED}✗ Failed to set label${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Tune Filesystem
+tune_filesystem() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_YELLOW}⚙ ${WHITE}${BOLD}TUNE FILESYSTEM${NC}                                           ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List ext filesystems only
+    mapfile -t partitions < <(lsblk -pno NAME,SIZE,FSTYPE | grep -E 'ext[234]' | awk '{print $1 " (" $2 ") [" $3 "]"}')
+
+    if [ ${#partitions[@]} -eq 0 ]; then
+        echo -e "${RED}No ext2/3/4 filesystems found${NC}"
+        echo -e "${YELLOW}(tune2fs only works with ext filesystems)${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Ext Filesystems ──────────────────────────────────┐${NC}"
+    local i=1
+    for partition in "${partitions[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$partition"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter partition number (0 to cancel): " part_num
+
+    if [ -z "$part_num" ] || [ "$part_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$part_num" =~ ^[0-9]+$ ]] || [ "$part_num" -lt 1 ] || [ "$part_num" -gt ${#partitions[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local partition_path=$(echo "${partitions[$((part_num-1))]}" | awk '{print $1}')
+
+    echo ""
+    echo -e "${BRIGHT_CYAN}Tuning Options:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} Set reserved blocks percentage"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} Set max mount count"
+    echo -e "  ${BRIGHT_GREEN}[3]${NC} Set check interval (days)"
+    echo -e "  ${BRIGHT_GREEN}[4]${NC} Disable fsck on boot"
+    echo -e "  ${BRIGHT_GREEN}[5]${NC} Enable fsck on boot"
+    echo ""
+    read -p "Select option (0 to cancel): " tune_option
+
+    case $tune_option in
+        1)
+            read -p "Enter reserved blocks percentage (default 5): " reserved
+            if [ -n "$reserved" ]; then
+                sudo tune2fs -m "$reserved" "$partition_path"
+            fi
+            ;;
+        2)
+            read -p "Enter max mount count before fsck (-1 to disable): " max_count
+            if [ -n "$max_count" ]; then
+                sudo tune2fs -c "$max_count" "$partition_path"
+            fi
+            ;;
+        3)
+            read -p "Enter check interval in days (0 to disable): " interval
+            if [ -n "$interval" ]; then
+                sudo tune2fs -i "${interval}d" "$partition_path"
+            fi
+            ;;
+        4)
+            sudo tune2fs -i 0 -c 0 "$partition_path"
+            echo -e "${BRIGHT_GREEN}✓ Disabled fsck on boot${NC}"
+            ;;
+        5)
+            sudo tune2fs -i 180d -c 30 "$partition_path"
+            echo -e "${BRIGHT_GREEN}✓ Enabled fsck on boot (180 days or 30 mounts)${NC}"
+            ;;
+        0) return ;;
+        *) echo -e "${RED}Invalid selection${NC}"; read -p "Press Enter..."; return ;;
+    esac
+
+    if [ $? -eq 0 ] && [ "$tune_option" != "4" ] && [ "$tune_option" != "5" ]; then
+        echo -e "${BRIGHT_GREEN}✓ Filesystem tuned successfully${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Mount/Unmount Operations
+manage_mount_operations() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_BLUE}🔌 ${WHITE}${BOLD}MOUNT/UNMOUNT OPERATIONS${NC}                                  ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_CYAN}Mount Operations:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} View Mounted Filesystems ${DIM}(df/mount)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} Mount Filesystem ${DIM}(wizard)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[3]${NC} Unmount Filesystem ${DIM}(wizard)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[4]${NC} View /etc/fstab ${DIM}(boot mounts)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[5]${NC} Add Entry to /etc/fstab ${DIM}(wizard)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[6]${NC} Remove Entry from /etc/fstab"
+    echo -e "  ${BRIGHT_GREEN}[7]${NC} Edit /etc/fstab ${DIM}(manual)${NC}"
+    echo -e "  ${BRIGHT_RED}[0]${NC} Back"
+    echo ""
+    echo -e "${DIM}${BRIGHT_CYAN}───────────────────────────────────────────────────────────────${NC}"
+    echo -e "${BRIGHT_YELLOW}❯${NC} Press a number key: "
+
+    read -n 1 -s choice
+    echo ""
+
+    case $choice in
+        1) view_mounted_filesystems ;;
+        2) mount_filesystem_wizard ;;
+        3) unmount_filesystem_wizard ;;
+        4) view_fstab ;;
+        5) add_fstab_entry_wizard ;;
+        6) remove_fstab_entry ;;
+        7) edit_fstab_manual ;;
+        0) return ;;
+    esac
+
+    manage_mount_operations
+}
+
+# View Mounted Filesystems
+view_mounted_filesystems() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_CYAN}📊 ${WHITE}${BOLD}MOUNTED FILESYSTEMS${NC}                                       ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_YELLOW}┌─ Disk Usage ─────────────────────────────────────────────────┐${NC}"
+    df -h | grep -v "tmpfs\|devtmpfs\|loop"
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+
+    echo ""
+    echo -e "${BRIGHT_YELLOW}┌─ Mount Details ──────────────────────────────────────────────┐${NC}"
+    mount | grep -v "tmpfs\|devtmpfs\|loop" | column -t
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Mount Filesystem Wizard
+mount_filesystem_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_GREEN}🔌 ${WHITE}${BOLD}MOUNT FILESYSTEM${NC}                                          ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List unmounted partitions with filesystems
+    mapfile -t partitions < <(lsblk -pno NAME,SIZE,FSTYPE,MOUNTPOINT | grep -E 'part|lvm' | awk '$3 != "" && $3 != "swap" && $4 == "" {print $1 " (" $2 ") [" $3 "]"}')
+
+    if [ ${#partitions[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No unmounted filesystems found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Unmounted Filesystems ──────────────────────────────────────┐${NC}"
+    local i=1
+    for partition in "${partitions[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$partition"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter partition number (0 to cancel): " part_num
+
+    if [ -z "$part_num" ] || [ "$part_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$part_num" =~ ^[0-9]+$ ]] || [ "$part_num" -lt 1 ] || [ "$part_num" -gt ${#partitions[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local partition_path=$(echo "${partitions[$((part_num-1))]}" | awk '{print $1}')
+    local fs_type=$(lsblk -no FSTYPE "$partition_path")
+
+    # Get mount point
+    echo ""
+    read -p "Enter mount point (e.g., /mnt/data): " mount_point
+
+    if [ -z "$mount_point" ]; then
+        echo -e "${RED}Mount point cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Create mount point if it doesn't exist
+    if [ ! -d "$mount_point" ]; then
+        echo ""
+        read -p "Mount point doesn't exist. Create it? (y/n): " -n 1 create_mp
+        echo ""
+
+        if [[ $create_mp =~ ^[Yy]$ ]]; then
+            sudo mkdir -p "$mount_point"
+            if [ $? -ne 0 ]; then
+                echo -e "${RED}Failed to create mount point${NC}"
+                read -p "Press Enter to continue..."
+                return
+            fi
+            echo -e "${BRIGHT_GREEN}✓ Created mount point${NC}"
+        else
+            echo -e "${YELLOW}Cancelled${NC}"
+            read -p "Press Enter to continue..."
+            return
+        fi
+    fi
+
+    # Mount filesystem
+    echo ""
+    echo -e "${BRIGHT_CYAN}Mounting $partition_path to $mount_point...${NC}"
+
+    sudo mount "$partition_path" "$mount_point"
+
+    if [ $? -eq 0 ]; then
+        echo -e "${BRIGHT_GREEN}✓ Filesystem mounted successfully${NC}"
+        df -h "$mount_point"
+    else
+        echo -e "${BRIGHT_RED}✗ Failed to mount filesystem${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Unmount Filesystem Wizard
+unmount_filesystem_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_RED}🔌 ${WHITE}${BOLD}UNMOUNT FILESYSTEM${NC}                                        ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List mounted partitions (excluding system mounts)
+    mapfile -t mounts < <(mount | grep -E '/dev/(sd|hd|nvme|vd|mapper)' | awk '{print $1 " on " $3 " type " $5}')
+
+    if [ ${#mounts[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No user-mounted filesystems found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Mounted Filesystems ────────────────────────────────────────┐${NC}"
+    local i=1
+    for mount_entry in "${mounts[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$mount_entry"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter mount number (0 to cancel): " mount_num
+
+    if [ -z "$mount_num" ] || [ "$mount_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$mount_num" =~ ^[0-9]+$ ]] || [ "$mount_num" -lt 1 ] || [ "$mount_num" -gt ${#mounts[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local mount_info="${mounts[$((mount_num-1))]}"
+    local mount_point=$(echo "$mount_info" | awk '{print $3}')
+
+    # Confirm
+    echo ""
+    echo -e "${BRIGHT_YELLOW}Unmount: ${BRIGHT_CYAN}$mount_point${NC}"
+    read -p "Continue? (y/n): " -n 1 confirm
+    echo ""
+
+    if ! [[ $confirm =~ ^[Yy]$ ]]; then
+        echo -e "${YELLOW}Cancelled${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Unmount
+    echo ""
+    echo -e "${BRIGHT_CYAN}Unmounting...${NC}"
+
+    sudo umount "$mount_point"
+
+    if [ $? -eq 0 ]; then
+        echo -e "${BRIGHT_GREEN}✓ Filesystem unmounted successfully${NC}"
+    else
+        echo -e "${BRIGHT_RED}✗ Failed to unmount${NC}"
+        echo -e "${YELLOW}Tip: Check if files are in use (lsof $mount_point)${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# View /etc/fstab
+view_fstab() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_CYAN}📄 ${WHITE}${BOLD}/etc/fstab${NC}                                                ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_YELLOW}┌─ /etc/fstab Contents ────────────────────────────────────────┐${NC}"
+    cat -n /etc/fstab
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Add Entry to /etc/fstab Wizard
+add_fstab_entry_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_GREEN}➕ ${WHITE}${BOLD}ADD /etc/fstab ENTRY${NC}                                      ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List all partitions with filesystems
+    mapfile -t partitions < <(lsblk -pno NAME,SIZE,FSTYPE,UUID | grep -E 'part|lvm' | awk '$3 != "" && $3 != "swap" {print $1 " (" $2 ") [" $3 "] UUID=" $4}')
+
+    if [ ${#partitions[@]} -eq 0 ]; then
+        echo -e "${RED}No partitions with filesystems found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Partitions ───────────────────────────────────────┐${NC}"
+    local i=1
+    for partition in "${partitions[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$partition"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter partition number (0 to cancel): " part_num
+
+    if [ -z "$part_num" ] || [ "$part_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$part_num" =~ ^[0-9]+$ ]] || [ "$part_num" -lt 1 ] || [ "$part_num" -gt ${#partitions[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local partition_info="${partitions[$((part_num-1))]}"
+    local partition_path=$(echo "$partition_info" | awk '{print $1}')
+    local uuid=$(lsblk -no UUID "$partition_path")
+    local fs_type=$(lsblk -no FSTYPE "$partition_path")
+
+    echo ""
+    echo -e "${BRIGHT_CYAN}Device: ${WHITE}$partition_path${NC}"
+    echo -e "${BRIGHT_CYAN}UUID: ${WHITE}$uuid${NC}"
+    echo -e "${BRIGHT_CYAN}Filesystem: ${WHITE}$fs_type${NC}"
+    echo ""
+
+    # Get mount point
+    read -p "Enter mount point (e.g., /mnt/data): " mount_point
+
+    if [ -z "$mount_point" ]; then
+        echo -e "${RED}Mount point cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Create mount point if needed
+    if [ ! -d "$mount_point" ]; then
+        sudo mkdir -p "$mount_point"
+    fi
+
+    # Get mount options
+    echo ""
+    echo -e "${BRIGHT_CYAN}Common mount options:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} defaults ${DIM}(rw,suid,dev,exec,auto,nouser,async)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} defaults,noatime ${DIM}(performance optimization)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[3]${NC} defaults,nofail ${DIM}(boot even if device missing)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[4]${NC} Custom"
+    echo ""
+    read -p "Select mount options (1-4): " opt_choice
+
+    local mount_opts="defaults"
+    case $opt_choice in
+        1) mount_opts="defaults" ;;
+        2) mount_opts="defaults,noatime" ;;
+        3) mount_opts="defaults,nofail" ;;
+        4) read -p "Enter custom options: " mount_opts ;;
+        *) mount_opts="defaults" ;;
+    esac
+
+    # Get dump and pass values
+    local dump=0
+    local pass=2
+
+    # Create fstab entry
+    local fstab_entry="UUID=$uuid  $mount_point  $fs_type  $mount_opts  $dump  $pass"
+
+    echo ""
+    echo -e "${BRIGHT_YELLOW}┌─ fstab Entry ────────────────────────────────────────────────┐${NC}"
+    echo -e "${WHITE}$fstab_entry${NC}"
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_RED}⚠  WARNING: Incorrect fstab entries can prevent system boot!${NC}"
+    read -p "Add this entry to /etc/fstab? (y/n): " -n 1 confirm
+    echo ""
+
+    if ! [[ $confirm =~ ^[Yy]$ ]]; then
+        echo -e "${YELLOW}Cancelled${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Backup fstab
+    sudo cp /etc/fstab /etc/fstab.backup.$(date +%Y%m%d%H%M%S)
+
+    # Add entry
+    echo "$fstab_entry" | sudo tee -a /etc/fstab > /dev/null
+
+    if [ $? -eq 0 ]; then
+        echo -e "${BRIGHT_GREEN}✓ Entry added to /etc/fstab${NC}"
+        echo -e "${BRIGHT_CYAN}Backup created: /etc/fstab.backup.*${NC}"
+
+        echo ""
+        read -p "Test mount now? (y/n): " -n 1 test_mount
+        echo ""
+
+        if [[ $test_mount =~ ^[Yy]$ ]]; then
+            sudo mount -a
+            if [ $? -eq 0 ]; then
+                echo -e "${BRIGHT_GREEN}✓ All filesystems mounted successfully${NC}"
+            else
+                echo -e "${BRIGHT_RED}✗ Mount failed - check /etc/fstab${NC}"
+            fi
+        fi
+    else
+        echo -e "${BRIGHT_RED}✗ Failed to add entry${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Remove Entry from /etc/fstab
+remove_fstab_entry() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_RED}➖ ${WHITE}${BOLD}REMOVE /etc/fstab ENTRY${NC}                                   ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # Show fstab with line numbers (excluding comments and empty lines)
+    mapfile -t entries < <(grep -v '^#' /etc/fstab | grep -v '^$' | nl)
+
+    if [ ${#entries[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No entries in /etc/fstab${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ /etc/fstab Entries ─────────────────────────────────────────┐${NC}"
+    for entry in "${entries[@]}"; do
+        echo -e "  ${BRIGHT_GREEN}$entry${NC}"
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter line number to remove (0 to cancel): " line_num
+
+    if [ -z "$line_num" ] || [ "$line_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$line_num" =~ ^[0-9]+$ ]] || [ "$line_num" -lt 1 ] || [ "$line_num" -gt ${#entries[@]} ]; then
+        echo -e "${RED}Invalid line number${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local entry_to_remove=$(grep -v '^#' /etc/fstab | grep -v '^$' | sed -n "${line_num}p")
+
+    echo ""
+    echo -e "${BRIGHT_YELLOW}Entry to remove:${NC}"
+    echo -e "${BRIGHT_RED}$entry_to_remove${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_RED}⚠  WARNING: Removing entries can affect system boot!${NC}"
+    read -p "Type 'yes' to confirm removal: " confirm
+
+    if [ "$confirm" != "yes" ]; then
+        echo -e "${YELLOW}Cancelled${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Backup fstab
+    sudo cp /etc/fstab /etc/fstab.backup.$(date +%Y%m%d%H%M%S)
+
+    # Remove entry
+    sudo sed -i "/^$(echo "$entry_to_remove" | sed 's/[\/&]/\\&/g')/d" /etc/fstab
+
+    if [ $? -eq 0 ]; then
+        echo -e "${BRIGHT_GREEN}✓ Entry removed from /etc/fstab${NC}"
+        echo -e "${BRIGHT_CYAN}Backup created: /etc/fstab.backup.*${NC}"
+    else
+        echo -e "${BRIGHT_RED}✗ Failed to remove entry${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Edit /etc/fstab Manually
+edit_fstab_manual() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_YELLOW}✏ ${WHITE}${BOLD}EDIT /etc/fstab${NC}                                           ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_RED}⚠  WARNING: Incorrect fstab entries can prevent system boot!${NC}"
+    echo ""
+    read -p "Continue with editing /etc/fstab? (y/n): " -n 1 confirm
+    echo ""
+
+    if ! [[ $confirm =~ ^[Yy]$ ]]; then
+        echo -e "${YELLOW}Cancelled${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Backup fstab
+    sudo cp /etc/fstab /etc/fstab.backup.$(date +%Y%m%d%H%M%S)
+    echo -e "${BRIGHT_CYAN}Backup created: /etc/fstab.backup.*${NC}"
+
+    # Edit with default editor
+    echo ""
+    echo -e "${BRIGHT_CYAN}Opening /etc/fstab in editor...${NC}"
+    sleep 1
+
+    sudo ${EDITOR:-nano} /etc/fstab
+
+    echo ""
+    echo -e "${BRIGHT_GREEN}✓ Edit session completed${NC}"
+
+    read -p "Test mount all filesystems? (y/n): " -n 1 test_mount
+    echo ""
+
+    if [[ $test_mount =~ ^[Yy]$ ]]; then
+        sudo mount -a
+        if [ $? -eq 0 ]; then
+            echo -e "${BRIGHT_GREEN}✓ All filesystems mounted successfully${NC}"
+        else
+            echo -e "${BRIGHT_RED}✗ Mount failed - check /etc/fstab for errors${NC}"
+            echo -e "${BRIGHT_CYAN}Restore backup if needed: sudo cp /etc/fstab.backup.* /etc/fstab${NC}"
+        fi
+    fi
+
     echo ""
     read -p "Press Enter to continue..."
 }
