@@ -82,10 +82,11 @@ lazyadmin
 ```
 
 **Navigation:**
-- Arrow keys (↑ ↓) to navigate
-- Enter to select
-- Esc to go back
-- 0 to exit
+- **Arrow keys (↑ ↓)** to navigate through options
+- **Type the number** of your choice (e.g., press `1`, `2`, `3`)
+- **Press Enter** to confirm and select (IMPORTANT: you must press Enter after typing a number)
+- **Esc** to go back to previous menu
+- **0** to exit current menu or quit
 
 ### Main Menu Structure
 

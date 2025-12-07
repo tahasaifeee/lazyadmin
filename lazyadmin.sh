@@ -42,8 +42,8 @@ MENU_HEIGHT=15
 #=============================================================================
 main_menu() {
     while true; do
-        $DIALOG --clear --title "LazyAdmin v$VERSION - Main Menu" \
-            --menu "Choose a section:\n\nNavigation: Use ↑↓ arrow keys to navigate, or type option number, then press Enter" $HEIGHT $WIDTH $MENU_HEIGHT \
+        $DIALOG --clear --title "LazyAdmin v$VERSION - PRESS NUMBER THEN ENTER TO SELECT" \
+            --menu "Choose a section:" $HEIGHT $WIDTH $MENU_HEIGHT \
             "1" "System Information" \
             "2" "User & Group Management" \
             "3" "Disk Management (LVM, RAID, ZFS)" \
@@ -71,8 +71,8 @@ main_menu() {
 #=============================================================================
 system_info_menu() {
     while true; do
-        $DIALOG --clear --title "System Information" \
-            --menu "Choose an option:\n\n(Use ↑↓ arrows or type number, then press Enter)" $HEIGHT $WIDTH $MENU_HEIGHT \
+        $DIALOG --clear --title "System Information - TYPE NUMBER THEN PRESS ENTER" \
+            --menu "Choose an option:" $HEIGHT $WIDTH $MENU_HEIGHT \
             "1" "System Info" \
             "2" "Services" \
             "3" "Processes" \
@@ -229,8 +229,8 @@ show_disk_usage() {
 #=============================================================================
 user_management_menu() {
     while true; do
-        $DIALOG --clear --title "User & Group Management" \
-            --menu "Choose an option:\n\n(Use ↑↓ arrows or type number, then press Enter)" $HEIGHT $WIDTH $MENU_HEIGHT \
+        $DIALOG --clear --title "User & Group Management - TYPE NUMBER THEN PRESS ENTER" \
+            --menu "Choose an option:" $HEIGHT $WIDTH $MENU_HEIGHT \
             "1" "List Users & Groups" \
             "2" "Create User" \
             "3" "Delete User" \
@@ -493,8 +493,8 @@ lock_unlock_user() {
 #=============================================================================
 disk_management_menu() {
     while true; do
-        $DIALOG --clear --title "Disk Management" \
-            --menu "Choose an option:\n\n(Use ↑↓ arrows or type number, then press Enter)" $HEIGHT $WIDTH $MENU_HEIGHT \
+        $DIALOG --clear --title "Disk Management - TYPE NUMBER THEN PRESS ENTER" \
+            --menu "Choose an option:" $HEIGHT $WIDTH $MENU_HEIGHT \
             "1" "LVM Management" \
             "2" "RAID Management (mdadm)" \
             "3" "ZFS Management" \
