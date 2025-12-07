@@ -98,14 +98,14 @@ LazyAdmin Main Menu
 │   └── [4] Disk Usage       - Monitor disk space
 │
 ├── [2] User & Group Management
-│   ├── [a] List Users & Groups      - View all users/groups
-│   ├── [b] Create User              - Add new user
-│   ├── [c] Delete User              - Remove user
-│   ├── [d] Add User to Group        - Add user to group
-│   ├── [e] Remove User from Group   - Remove user from group
-│   ├── [f] Set/Reset Password       - Change user password
-│   ├── [g] Change User Shell        - Modify user's shell
-│   └── [h] Lock/Unlock User         - Lock/unlock account
+│   ├── [1] List Users & Groups      - View all users/groups
+│   ├── [2] Create User              - Add new user
+│   ├── [3] Delete User              - Remove user
+│   ├── [4] Add User to Group        - Add user to group
+│   ├── [5] Remove User from Group   - Remove user from group
+│   ├── [6] Set/Reset Password       - Change user password
+│   ├── [7] Change User Shell        - Modify user's shell
+│   └── [8] Lock/Unlock User         - Lock/unlock account
 │
 ├── [3] Disk Management (LVM, RAID, ZFS)
 │   ├── [1] LVM Management           - Physical Volumes, Volume Groups, Logical Volumes
