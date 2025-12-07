@@ -171,7 +171,7 @@ disk_management_menu() {
         case $choice in
             1) manage_lvm ;;
             2) manage_raid ;;
-            3) echo "ZFS Management - Feature coming soon"; read -p "Press Enter to continue..." ;;
+            3) manage_zfs ;;
             4) echo "Disk Partitioning - Feature coming soon"; read -p "Press Enter to continue..." ;;
             5) echo "Filesystem Operations - Feature coming soon"; read -p "Press Enter to continue..." ;;
             6) echo "Mount/Unmount - Feature coming soon"; read -p "Press Enter to continue..." ;;
@@ -1653,6 +1653,617 @@ remove_lvm_component() {
                 fi
             fi
             ;;
+    esac
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# ZFS Management
+manage_zfs() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_BLUE}💿 ${WHITE}${BOLD}ZFS MANAGEMENT${NC}                                            ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # Check if ZFS is installed
+    if ! command -v zfs &> /dev/null; then
+        echo -e "${YELLOW}ZFS tools not installed.${NC}"
+        echo ""
+        read -p "Would you like to install ZFS? (y/n): " -n 1 install_choice
+        echo ""
+
+        if [[ $install_choice =~ ^[Yy]$ ]]; then
+            PKG_MGR=$(detect_package_manager)
+            case $PKG_MGR in
+                apt)
+                    sudo apt install -y zfsutils-linux
+                    sudo modprobe zfs
+                    ;;
+                dnf|yum)
+                    echo -e "${YELLOW}Please install ZFS from https://openzfs.github.io/openzfs-docs/Getting%20Started/RHEL-based%20distro/index.html${NC}"
+                    read -p "Press Enter..."
+                    return
+                    ;;
+                *) echo -e "${RED}Could not install ZFS${NC}"; read -p "Press Enter..."; return ;;
+            esac
+        else
+            read -p "Press Enter to continue..."
+            return
+        fi
+    fi
+
+    echo -e "${BRIGHT_CYAN}ZFS Operations:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} View ZFS Pools ${DIM}(status and properties)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} Create ZFS Pool ${DIM}(wizard)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[3]${NC} Create Dataset ${DIM}(filesystem)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[4]${NC} Create Snapshot ${DIM}(point-in-time copy)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[5]${NC} List Snapshots"
+    echo -e "  ${BRIGHT_GREEN}[6]${NC} Rollback to Snapshot"
+    echo -e "  ${BRIGHT_GREEN}[7]${NC} Destroy Pool/Dataset/Snapshot"
+    echo -e "  ${BRIGHT_GREEN}[8]${NC} Import/Export Pool"
+    echo -e "  ${BRIGHT_RED}[0]${NC} Back"
+    echo ""
+    echo -e "${DIM}${BRIGHT_CYAN}───────────────────────────────────────────────────────────────${NC}"
+    echo -e "${BRIGHT_YELLOW}❯${NC} Press a number key: "
+
+    read -n 1 -s choice
+    echo ""
+
+    case $choice in
+        1) view_zfs_pools ;;
+        2) create_zpool_wizard ;;
+        3) create_dataset_wizard ;;
+        4) create_snapshot_wizard ;;
+        5) list_snapshots ;;
+        6) rollback_snapshot_wizard ;;
+        7) destroy_zfs_wizard ;;
+        8) import_export_pool ;;
+        0) return ;;
+    esac
+
+    manage_zfs
+}
+
+# View ZFS Pools
+view_zfs_pools() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_CYAN}📊 ${WHITE}${BOLD}ZFS POOL STATUS${NC}                                           ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    if ! sudo zpool list &>/dev/null; then
+        echo -e "${YELLOW}No ZFS pools found${NC}"
+    else
+        echo -e "${BRIGHT_YELLOW}┌─ ZFS Pools ──────────────────────────────────────────────────┐${NC}"
+        sudo zpool list
+        echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+        echo ""
+
+        echo -e "${BRIGHT_YELLOW}┌─ ZFS Datasets ───────────────────────────────────────────────┐${NC}"
+        sudo zfs list
+        echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Create ZFS Pool Wizard
+create_zpool_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_GREEN}🔧 ${WHITE}${BOLD}CREATE ZFS POOL - Wizard${NC}                                 ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # Auto-detect available disks
+    echo -e "${BRIGHT_CYAN}Auto-detecting available disks...${NC}"
+    echo ""
+
+    mapfile -t disks < <(lsblk -dpno NAME,SIZE,TYPE | grep disk | awk '{print $1 " (" $2 ")"}')
+
+    if [ ${#disks[@]} -eq 0 ]; then
+        echo -e "${RED}No available disks found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Disks ────────────────────────────────────────────┐${NC}"
+    local i=1
+    for disk in "${disks[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$disk"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    # Select pool type
+    echo -e "${BRIGHT_BLUE}Select ZFS Pool Type:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} Single Disk ${DIM}(no redundancy)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} Mirror ${DIM}(2+ disks, full redundancy)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[3]${NC} RAIDZ1 ${DIM}(3+ disks, 1 parity disk)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[4]${NC} RAIDZ2 ${DIM}(4+ disks, 2 parity disks)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[5]${NC} RAIDZ3 ${DIM}(5+ disks, 3 parity disks)${NC}"
+    echo ""
+    read -p "Enter pool type (0 to cancel): " pool_type
+
+    local vdev_type=""
+    local min_disks=1
+    case $pool_type in
+        1) vdev_type=""; min_disks=1 ;;
+        2) vdev_type="mirror"; min_disks=2 ;;
+        3) vdev_type="raidz"; min_disks=3 ;;
+        4) vdev_type="raidz2"; min_disks=4 ;;
+        5) vdev_type="raidz3"; min_disks=5 ;;
+        0) return ;;
+        *) echo -e "${RED}Invalid selection${NC}"; read -p "Press Enter..."; return ;;
+    esac
+
+    # Select disks
+    echo ""
+    echo -e "${BRIGHT_CYAN}Select disks for the pool (minimum $min_disks)${NC}"
+    echo -e "${DIM}Enter disk numbers separated by spaces (e.g., 1 2 3):${NC}"
+    read -p "> " disk_nums
+
+    local selected_disks=()
+    for num in $disk_nums; do
+        if [[ "$num" =~ ^[0-9]+$ ]] && [ "$num" -ge 1 ] && [ "$num" -le ${#disks[@]} ]; then
+            local disk_path=$(echo "${disks[$((num-1))]}" | awk '{print $1}')
+            selected_disks+=("$disk_path")
+        fi
+    done
+
+    if [ ${#selected_disks[@]} -lt $min_disks ]; then
+        echo -e "${RED}Need at least $min_disks disks for this pool type${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Pool name
+    echo ""
+    read -p "Enter pool name: " pool_name
+
+    if [ -z "$pool_name" ]; then
+        echo -e "${RED}Pool name cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Confirm
+    echo ""
+    echo -e "${BRIGHT_YELLOW}┌─ Configuration ──────────────────────────────────────────────┐${NC}"
+    echo -e "  Pool name: ${BRIGHT_CYAN}$pool_name${NC}"
+    echo -e "  Type: ${BRIGHT_CYAN}${vdev_type:-single}${NC}"
+    echo -e "  Disks: ${BRIGHT_CYAN}${selected_disks[*]}${NC}"
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+    echo -e "${BRIGHT_RED}⚠  WARNING: This will destroy all data on selected disks!${NC}"
+    read -p "Type 'yes' to confirm: " confirm
+
+    if [ "$confirm" != "yes" ]; then
+        echo -e "${YELLOW}Cancelled${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Create pool
+    echo ""
+    echo -e "${BRIGHT_CYAN}Creating ZFS pool...${NC}"
+
+    if [ -n "$vdev_type" ]; then
+        sudo zpool create "$pool_name" $vdev_type "${selected_disks[@]}"
+    else
+        sudo zpool create "$pool_name" "${selected_disks[@]}"
+    fi
+
+    if [ $? -eq 0 ]; then
+        echo -e "${BRIGHT_GREEN}✓ ZFS pool '$pool_name' created successfully${NC}"
+        sudo zpool status "$pool_name"
+    else
+        echo -e "${BRIGHT_RED}✗ Failed to create pool${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Create Dataset Wizard
+create_dataset_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_GREEN}📁 ${WHITE}${BOLD}CREATE ZFS DATASET${NC}                                        ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List available pools
+    mapfile -t pools < <(sudo zpool list -H -o name 2>/dev/null)
+
+    if [ ${#pools[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No ZFS pools found. Create a pool first.${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Pools ────────────────────────────────────────────┐${NC}"
+    local i=1
+    for pool in "${pools[@]}"; do
+        local size=$(sudo zpool list -H -o size "$pool")
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %-20s ${DIM}Size:${NC} ${BRIGHT_CYAN}%s${NC}\n" "$i" "$pool" "$size"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter pool number (0 to cancel): " pool_num
+
+    if [ -z "$pool_num" ] || [ "$pool_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$pool_num" =~ ^[0-9]+$ ]] || [ "$pool_num" -lt 1 ] || [ "$pool_num" -gt ${#pools[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local pool_name="${pools[$((pool_num-1))]}"
+
+    # Dataset name
+    echo ""
+    read -p "Enter dataset name (e.g., data): " dataset_name
+
+    if [ -z "$dataset_name" ]; then
+        echo -e "${RED}Dataset name cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Optional: Set quota
+    echo ""
+    read -p "Set quota? (e.g., 100G, or press Enter to skip): " quota
+
+    # Create dataset
+    echo ""
+    echo -e "${BRIGHT_CYAN}Creating dataset...${NC}"
+
+    sudo zfs create "$pool_name/$dataset_name"
+
+    if [ $? -eq 0 ]; then
+        if [ -n "$quota" ]; then
+            sudo zfs set quota="$quota" "$pool_name/$dataset_name"
+        fi
+        echo -e "${BRIGHT_GREEN}✓ Dataset '$pool_name/$dataset_name' created successfully${NC}"
+        sudo zfs list "$pool_name/$dataset_name"
+    else
+        echo -e "${BRIGHT_RED}✗ Failed to create dataset${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Create Snapshot Wizard
+create_snapshot_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_GREEN}📸 ${WHITE}${BOLD}CREATE ZFS SNAPSHOT${NC}                                       ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List datasets
+    mapfile -t datasets < <(sudo zfs list -H -o name 2>/dev/null)
+
+    if [ ${#datasets[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No ZFS datasets found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Datasets ─────────────────────────────────────────┐${NC}"
+    local i=1
+    for dataset in "${datasets[@]}"; do
+        local used=$(sudo zfs list -H -o used "$dataset")
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %-30s ${DIM}Used:${NC} ${BRIGHT_CYAN}%s${NC}\n" "$i" "$dataset" "$used"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter dataset number (0 to cancel): " dataset_num
+
+    if [ -z "$dataset_num" ] || [ "$dataset_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$dataset_num" =~ ^[0-9]+$ ]] || [ "$dataset_num" -lt 1 ] || [ "$dataset_num" -gt ${#datasets[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local dataset_name="${datasets[$((dataset_num-1))]}"
+
+    # Snapshot name
+    echo ""
+    read -p "Enter snapshot name (e.g., backup-$(date +%Y%m%d)): " snap_name
+
+    if [ -z "$snap_name" ]; then
+        echo -e "${RED}Snapshot name cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Create snapshot
+    echo ""
+    echo -e "${BRIGHT_CYAN}Creating snapshot...${NC}"
+
+    sudo zfs snapshot "$dataset_name@$snap_name"
+
+    if [ $? -eq 0 ]; then
+        echo -e "${BRIGHT_GREEN}✓ Snapshot '$dataset_name@$snap_name' created successfully${NC}"
+    else
+        echo -e "${BRIGHT_RED}✗ Failed to create snapshot${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# List Snapshots
+list_snapshots() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_CYAN}📸 ${WHITE}${BOLD}ZFS SNAPSHOTS${NC}                                             ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    if ! sudo zfs list -t snapshot &>/dev/null; then
+        echo -e "${YELLOW}No snapshots found${NC}"
+    else
+        echo -e "${BRIGHT_YELLOW}┌─ Snapshots ──────────────────────────────────────────────────┐${NC}"
+        sudo zfs list -t snapshot
+        echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Rollback to Snapshot Wizard
+rollback_snapshot_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_YELLOW}⏮ ${WHITE}${BOLD}ROLLBACK TO SNAPSHOT${NC}                                      ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List snapshots
+    mapfile -t snapshots < <(sudo zfs list -H -t snapshot -o name 2>/dev/null)
+
+    if [ ${#snapshots[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No snapshots found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Snapshots ────────────────────────────────────────┐${NC}"
+    local i=1
+    for snapshot in "${snapshots[@]}"; do
+        local created=$(sudo zfs list -H -t snapshot -o creation "$snapshot")
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %-40s ${DIM}%s${NC}\n" "$i" "$snapshot" "$created"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter snapshot number (0 to cancel): " snap_num
+
+    if [ -z "$snap_num" ] || [ "$snap_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$snap_num" =~ ^[0-9]+$ ]] || [ "$snap_num" -lt 1 ] || [ "$snap_num" -gt ${#snapshots[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local snapshot_name="${snapshots[$((snap_num-1))]}"
+
+    # Confirm
+    echo ""
+    echo -e "${BRIGHT_RED}⚠  WARNING: This will discard all changes since this snapshot!${NC}"
+    read -p "Type 'yes' to confirm rollback: " confirm
+
+    if [ "$confirm" != "yes" ]; then
+        echo -e "${YELLOW}Cancelled${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Rollback
+    echo ""
+    echo -e "${BRIGHT_CYAN}Rolling back to snapshot...${NC}"
+
+    sudo zfs rollback -r "$snapshot_name"
+
+    if [ $? -eq 0 ]; then
+        echo -e "${BRIGHT_GREEN}✓ Rolled back to '$snapshot_name' successfully${NC}"
+    else
+        echo -e "${BRIGHT_RED}✗ Failed to rollback${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Destroy ZFS Wizard
+destroy_zfs_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_RED}🗑 ${WHITE}${BOLD}DESTROY ZFS COMPONENT${NC}                                      ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_CYAN}What would you like to destroy?${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} Snapshot"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} Dataset"
+    echo -e "  ${BRIGHT_GREEN}[3]${NC} Pool"
+    echo -e "  ${BRIGHT_RED}[0]${NC} Cancel"
+    echo ""
+    read -p "Select type: " destroy_type
+
+    case $destroy_type in
+        1)
+            # Destroy snapshot
+            mapfile -t items < <(sudo zfs list -H -t snapshot -o name 2>/dev/null)
+            local item_type="snapshot"
+            ;;
+        2)
+            # Destroy dataset
+            mapfile -t items < <(sudo zfs list -H -o name 2>/dev/null)
+            local item_type="dataset"
+            ;;
+        3)
+            # Destroy pool
+            mapfile -t items < <(sudo zpool list -H -o name 2>/dev/null)
+            local item_type="pool"
+            ;;
+        0) return ;;
+        *) echo -e "${RED}Invalid selection${NC}"; read -p "Press Enter..."; return ;;
+    esac
+
+    if [ ${#items[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No ${item_type}s found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo ""
+    echo -e "${BRIGHT_YELLOW}┌─ Available ${item_type^}s ─────────────────────────────────────────┐${NC}"
+    local i=1
+    for item in "${items[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$item"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter ${item_type} number (0 to cancel): " item_num
+
+    if [ -z "$item_num" ] || [ "$item_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$item_num" =~ ^[0-9]+$ ]] || [ "$item_num" -lt 1 ] || [ "$item_num" -gt ${#items[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local item_name="${items[$((item_num-1))]}"
+
+    # Confirm
+    echo ""
+    echo -e "${BRIGHT_RED}⚠  WARNING: This action cannot be undone!${NC}"
+    echo -e "Destroying: ${BRIGHT_CYAN}$item_name${NC}"
+    read -p "Type 'yes' to confirm: " confirm
+
+    if [ "$confirm" != "yes" ]; then
+        echo -e "${YELLOW}Cancelled${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Destroy
+    echo ""
+    echo -e "${BRIGHT_CYAN}Destroying ${item_type}...${NC}"
+
+    case $destroy_type in
+        3)
+            sudo zpool destroy "$item_name"
+            ;;
+        *)
+            sudo zfs destroy -r "$item_name"
+            ;;
+    esac
+
+    if [ $? -eq 0 ]; then
+        echo -e "${BRIGHT_GREEN}✓ Destroyed successfully${NC}"
+    else
+        echo -e "${BRIGHT_RED}✗ Failed to destroy${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Import/Export Pool
+import_export_pool() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_BLUE}🔄 ${WHITE}${BOLD}IMPORT/EXPORT ZFS POOL${NC}                                    ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_CYAN}Select operation:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} Import Pool"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} Export Pool"
+    echo -e "  ${BRIGHT_RED}[0]${NC} Cancel"
+    echo ""
+    read -p "Select: " operation
+
+    case $operation in
+        1)
+            # Import pool
+            echo ""
+            echo -e "${BRIGHT_CYAN}Scanning for importable pools...${NC}"
+            sudo zpool import
+            echo ""
+            read -p "Enter pool name to import (or 0 to cancel): " pool_name
+
+            if [ "$pool_name" != "0" ] && [ -n "$pool_name" ]; then
+                sudo zpool import "$pool_name"
+                [ $? -eq 0 ] && echo -e "${BRIGHT_GREEN}✓ Pool imported${NC}" || echo -e "${BRIGHT_RED}✗ Failed${NC}"
+            fi
+            ;;
+        2)
+            # Export pool
+            mapfile -t pools < <(sudo zpool list -H -o name 2>/dev/null)
+
+            if [ ${#pools[@]} -eq 0 ]; then
+                echo -e "${YELLOW}No pools to export${NC}"
+                read -p "Press Enter..."; return
+            fi
+
+            echo ""
+            echo -e "${BRIGHT_YELLOW}┌─ Active Pools ───────────────────────────────────────────────┐${NC}"
+            local i=1
+            for pool in "${pools[@]}"; do
+                printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$pool"
+                ((i++))
+            done
+            echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+            echo ""
+
+            read -p "Enter pool number (0 to cancel): " pool_num
+
+            if [ "$pool_num" -gt 0 ] 2>/dev/null && [ "$pool_num" -le ${#pools[@]} ]; then
+                local pool_name="${pools[$((pool_num-1))]}"
+                echo ""
+                read -p "Export pool '$pool_name'? (y/n): " -n 1 confirm
+                echo ""
+
+                if [[ $confirm =~ ^[Yy]$ ]]; then
+                    sudo zpool export "$pool_name"
+                    [ $? -eq 0 ] && echo -e "${BRIGHT_GREEN}✓ Pool exported${NC}" || echo -e "${BRIGHT_RED}✗ Failed${NC}"
+                fi
+            fi
+            ;;
+        0) return ;;
     esac
 
     echo ""
