@@ -43,7 +43,7 @@ MENU_HEIGHT=15
 main_menu() {
     while true; do
         $DIALOG --clear --title "LazyAdmin v$VERSION - Main Menu" \
-            --menu "Choose a section:" $HEIGHT $WIDTH $MENU_HEIGHT \
+            --menu "Choose a section:\n\nNavigation: Use ↑↓ arrow keys to navigate, or type option number, then press Enter" $HEIGHT $WIDTH $MENU_HEIGHT \
             "1" "System Information" \
             "2" "User & Group Management" \
             "3" "Disk Management (LVM, RAID, ZFS)" \
@@ -72,7 +72,7 @@ main_menu() {
 system_info_menu() {
     while true; do
         $DIALOG --clear --title "System Information" \
-            --menu "Choose an option:" $HEIGHT $WIDTH $MENU_HEIGHT \
+            --menu "Choose an option:\n\n(Use ↑↓ arrows or type number, then press Enter)" $HEIGHT $WIDTH $MENU_HEIGHT \
             "1" "System Info" \
             "2" "Services" \
             "3" "Processes" \
@@ -230,15 +230,15 @@ show_disk_usage() {
 user_management_menu() {
     while true; do
         $DIALOG --clear --title "User & Group Management" \
-            --menu "Choose an option:" $HEIGHT $WIDTH $MENU_HEIGHT \
-            "a" "List Users & Groups" \
-            "b" "Create User" \
-            "c" "Delete User" \
-            "d" "Add User to Group" \
-            "e" "Remove User from Group" \
-            "f" "Set/Reset Password" \
-            "g" "Change User Shell" \
-            "h" "Lock/Unlock User" \
+            --menu "Choose an option:\n\n(Use ↑↓ arrows or type number, then press Enter)" $HEIGHT $WIDTH $MENU_HEIGHT \
+            "1" "List Users & Groups" \
+            "2" "Create User" \
+            "3" "Delete User" \
+            "4" "Add User to Group" \
+            "5" "Remove User from Group" \
+            "6" "Set/Reset Password" \
+            "7" "Change User Shell" \
+            "8" "Lock/Unlock User" \
             "0" "Back to Main Menu" \
             2> "$TEMP_FILE"
 
@@ -250,14 +250,14 @@ user_management_menu() {
         selection=$(cat "$TEMP_FILE")
 
         case $selection in
-            a) list_users_groups ;;
-            b) create_user ;;
-            c) delete_user ;;
-            d) add_user_to_group ;;
-            e) remove_user_from_group ;;
-            f) set_password ;;
-            g) change_shell ;;
-            h) lock_unlock_user ;;
+            1) list_users_groups ;;
+            2) create_user ;;
+            3) delete_user ;;
+            4) add_user_to_group ;;
+            5) remove_user_from_group ;;
+            6) set_password ;;
+            7) change_shell ;;
+            8) lock_unlock_user ;;
             0) return ;;
         esac
     done
@@ -494,7 +494,7 @@ lock_unlock_user() {
 disk_management_menu() {
     while true; do
         $DIALOG --clear --title "Disk Management" \
-            --menu "Choose an option:" $HEIGHT $WIDTH $MENU_HEIGHT \
+            --menu "Choose an option:\n\n(Use ↑↓ arrows or type number, then press Enter)" $HEIGHT $WIDTH $MENU_HEIGHT \
             "1" "LVM Management" \
             "2" "RAID Management (mdadm)" \
             "3" "ZFS Management" \
