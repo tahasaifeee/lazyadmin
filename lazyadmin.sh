@@ -33,6 +33,7 @@ main_menu() {
         echo -e "  ${GREEN}[1]${NC} System Information"
         echo -e "  ${GREEN}[2]${NC} User & Group Management"
         echo -e "  ${GREEN}[3]${NC} Disk Management (LVM, RAID, ZFS)"
+        echo -e "  ${GREEN}[4]${NC} Package Management"
         echo -e "  ${RED}[0]${NC} Exit"
         echo ""
         echo -e "${YELLOW}Press a number key to select:${NC} "
@@ -44,6 +45,7 @@ main_menu() {
             1) system_info_menu ;;
             2) user_management_menu ;;
             3) disk_management_menu ;;
+            4) package_management_menu ;;
             0) clear; exit 0 ;;
         esac
     done
@@ -139,6 +141,39 @@ disk_management_menu() {
             5) echo "Filesystem Operations - Feature coming soon"; read -p "Press Enter to continue..." ;;
             6) echo "Mount/Unmount - Feature coming soon"; read -p "Press Enter to continue..." ;;
             7) view_disk_info ;;
+            0) return ;;
+        esac
+    done
+}
+
+# Package Management menu
+package_management_menu() {
+    while true; do
+        show_header
+        echo -e "${CYAN}${BOLD}PACKAGE MANAGEMENT${NC}"
+        echo ""
+        echo -e "  ${GREEN}[1]${NC} Update Package Lists (apt/yum/dnf update)"
+        echo -e "  ${GREEN}[2]${NC} Install a Package"
+        echo -e "  ${GREEN}[3]${NC} Remove a Package"
+        echo -e "  ${GREEN}[4]${NC} Upgrade System"
+        echo -e "  ${GREEN}[5]${NC} Search Package"
+        echo -e "  ${GREEN}[6]${NC} List Installed Packages"
+        echo -e "  ${GREEN}[7]${NC} Clean Package Cache"
+        echo -e "  ${RED}[0]${NC} Back to Main Menu"
+        echo ""
+        echo -e "${YELLOW}Press a number key:${NC} "
+
+        read -n 1 -s choice
+        echo ""
+
+        case $choice in
+            1) update_package_lists ;;
+            2) install_package ;;
+            3) remove_package ;;
+            4) upgrade_system ;;
+            5) search_package ;;
+            6) list_installed_packages ;;
+            7) clean_package_cache ;;
             0) return ;;
         esac
     done
@@ -403,6 +438,296 @@ view_disk_info() {
     echo ""
     echo -e "${GREEN}BLOCK DEVICES:${NC}"
     lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+#=============================================================================
+# PACKAGE MANAGEMENT FUNCTIONS
+#=============================================================================
+
+# Detect package manager
+detect_package_manager() {
+    if command -v apt &> /dev/null; then
+        echo "apt"
+    elif command -v dnf &> /dev/null; then
+        echo "dnf"
+    elif command -v yum &> /dev/null; then
+        echo "yum"
+    else
+        echo "none"
+    fi
+}
+
+update_package_lists() {
+    clear
+    echo -e "${CYAN}${BOLD}UPDATE PACKAGE LISTS${NC}"
+    echo ""
+
+    PKG_MGR=$(detect_package_manager)
+
+    case $PKG_MGR in
+        apt)
+            echo -e "${GREEN}Running: sudo apt update${NC}"
+            echo ""
+            sudo apt update
+            ;;
+        dnf)
+            echo -e "${GREEN}Running: sudo dnf check-update${NC}"
+            echo ""
+            sudo dnf check-update
+            ;;
+        yum)
+            echo -e "${GREEN}Running: sudo yum check-update${NC}"
+            echo ""
+            sudo yum check-update
+            ;;
+        *)
+            echo -e "${RED}No supported package manager found${NC}"
+            ;;
+    esac
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+install_package() {
+    clear
+    echo -e "${CYAN}${BOLD}INSTALL PACKAGE${NC}"
+    echo ""
+
+    PKG_MGR=$(detect_package_manager)
+
+    if [ "$PKG_MGR" == "none" ]; then
+        echo -e "${RED}No supported package manager found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    read -p "Enter package name to install: " package_name
+
+    if [ -z "$package_name" ]; then
+        echo -e "${RED}Package name cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo ""
+    case $PKG_MGR in
+        apt)
+            echo -e "${GREEN}Running: sudo apt install $package_name${NC}"
+            echo ""
+            sudo apt install "$package_name"
+            ;;
+        dnf)
+            echo -e "${GREEN}Running: sudo dnf install $package_name${NC}"
+            echo ""
+            sudo dnf install "$package_name"
+            ;;
+        yum)
+            echo -e "${GREEN}Running: sudo yum install $package_name${NC}"
+            echo ""
+            sudo yum install "$package_name"
+            ;;
+    esac
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+remove_package() {
+    clear
+    echo -e "${CYAN}${BOLD}REMOVE PACKAGE${NC}"
+    echo ""
+
+    PKG_MGR=$(detect_package_manager)
+
+    if [ "$PKG_MGR" == "none" ]; then
+        echo -e "${RED}No supported package manager found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    read -p "Enter package name to remove: " package_name
+
+    if [ -z "$package_name" ]; then
+        echo -e "${RED}Package name cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo ""
+    read -p "Are you sure you want to remove $package_name? (y/n): " -n 1 confirm
+    echo ""
+
+    if [[ ! $confirm =~ ^[Yy]$ ]]; then
+        echo "Cancelled."
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo ""
+    case $PKG_MGR in
+        apt)
+            echo -e "${GREEN}Running: sudo apt remove $package_name${NC}"
+            echo ""
+            sudo apt remove "$package_name"
+            ;;
+        dnf)
+            echo -e "${GREEN}Running: sudo dnf remove $package_name${NC}"
+            echo ""
+            sudo dnf remove "$package_name"
+            ;;
+        yum)
+            echo -e "${GREEN}Running: sudo yum remove $package_name${NC}"
+            echo ""
+            sudo yum remove "$package_name"
+            ;;
+    esac
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+upgrade_system() {
+    clear
+    echo -e "${CYAN}${BOLD}UPGRADE SYSTEM${NC}"
+    echo ""
+
+    PKG_MGR=$(detect_package_manager)
+
+    case $PKG_MGR in
+        apt)
+            echo -e "${GREEN}Running: sudo apt update && sudo apt upgrade${NC}"
+            echo ""
+            sudo apt update && sudo apt upgrade
+            ;;
+        dnf)
+            echo -e "${GREEN}Running: sudo dnf upgrade${NC}"
+            echo ""
+            sudo dnf upgrade
+            ;;
+        yum)
+            echo -e "${GREEN}Running: sudo yum update${NC}"
+            echo ""
+            sudo yum update
+            ;;
+        *)
+            echo -e "${RED}No supported package manager found${NC}"
+            ;;
+    esac
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+search_package() {
+    clear
+    echo -e "${CYAN}${BOLD}SEARCH PACKAGE${NC}"
+    echo ""
+
+    PKG_MGR=$(detect_package_manager)
+
+    if [ "$PKG_MGR" == "none" ]; then
+        echo -e "${RED}No supported package manager found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    read -p "Enter search term: " search_term
+
+    if [ -z "$search_term" ]; then
+        echo -e "${RED}Search term cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo ""
+    case $PKG_MGR in
+        apt)
+            echo -e "${GREEN}Running: apt search $search_term${NC}"
+            echo ""
+            apt search "$search_term" 2>/dev/null | head -n 50
+            ;;
+        dnf)
+            echo -e "${GREEN}Running: dnf search $search_term${NC}"
+            echo ""
+            dnf search "$search_term" 2>/dev/null | head -n 50
+            ;;
+        yum)
+            echo -e "${GREEN}Running: yum search $search_term${NC}"
+            echo ""
+            yum search "$search_term" 2>/dev/null | head -n 50
+            ;;
+    esac
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+list_installed_packages() {
+    clear
+    echo -e "${CYAN}${BOLD}INSTALLED PACKAGES (First 50)${NC}"
+    echo ""
+
+    PKG_MGR=$(detect_package_manager)
+
+    case $PKG_MGR in
+        apt)
+            echo -e "${GREEN}Installed packages (dpkg -l):${NC}"
+            echo ""
+            dpkg -l | grep '^ii' | head -n 50
+            ;;
+        dnf)
+            echo -e "${GREEN}Installed packages (dnf list installed):${NC}"
+            echo ""
+            dnf list installed 2>/dev/null | head -n 50
+            ;;
+        yum)
+            echo -e "${GREEN}Installed packages (yum list installed):${NC}"
+            echo ""
+            yum list installed 2>/dev/null | head -n 50
+            ;;
+        *)
+            echo -e "${RED}No supported package manager found${NC}"
+            ;;
+    esac
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+clean_package_cache() {
+    clear
+    echo -e "${CYAN}${BOLD}CLEAN PACKAGE CACHE${NC}"
+    echo ""
+
+    PKG_MGR=$(detect_package_manager)
+
+    case $PKG_MGR in
+        apt)
+            echo -e "${GREEN}Running: sudo apt clean && sudo apt autoclean${NC}"
+            echo ""
+            sudo apt clean && sudo apt autoclean
+            echo -e "${GREEN}Cache cleaned successfully${NC}"
+            ;;
+        dnf)
+            echo -e "${GREEN}Running: sudo dnf clean all${NC}"
+            echo ""
+            sudo dnf clean all
+            echo -e "${GREEN}Cache cleaned successfully${NC}"
+            ;;
+        yum)
+            echo -e "${GREEN}Running: sudo yum clean all${NC}"
+            echo ""
+            sudo yum clean all
+            echo -e "${GREEN}Cache cleaned successfully${NC}"
+            ;;
+        *)
+            echo -e "${RED}No supported package manager found${NC}"
+            ;;
+    esac
+
     echo ""
     read -p "Press Enter to continue..."
 }

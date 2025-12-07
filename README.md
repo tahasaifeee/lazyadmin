@@ -20,6 +20,13 @@ A fast and lightweight terminal UI (TUI) for Linux system administration, built 
   - Set passwords
   - Change user shells
   - Lock/unlock user accounts
+- **Package Management**: Universal package manager support (apt/yum/dnf)
+  - Update package lists
+  - Install and remove packages
+  - Upgrade entire system
+  - Search for packages
+  - List installed packages
+  - Clean package cache
 - **Disk Management (LVM, RAID, ZFS)**: Complete storage administration
   - **LVM**: Create/manage Physical Volumes, Volume Groups, Logical Volumes
   - **RAID**: Configure and manage mdadm RAID arrays (0, 1, 5, 6, 10)
@@ -35,12 +42,13 @@ A fast and lightweight terminal UI (TUI) for Linux system administration, built 
 ## Screenshots
 
 The interface features:
-- Clean dialog-based menus
-- Hierarchical navigation (Main Menu → Submenus → Actions)
-- Three main sections:
+- Clean terminal-based menus with color coding
+- Single-keypress navigation (no Enter needed!)
+- Four main sections:
   - **System Information**: System Info, Services, Processes, Disk Usage
   - **User & Group Management**: 8 different user/group operations
   - **Disk Management**: LVM, RAID, ZFS, Partitioning, Filesystems, Mount operations
+  - **Package Management**: 7 package operations with auto-detection (apt/yum/dnf)
 - Real-time data display
 - Interactive prompts for user actions
 - No commands required - everything through menus
@@ -116,6 +124,15 @@ LazyAdmin Main Menu
 │   ├── [5] Filesystem Operations    - Create, check, resize filesystems
 │   ├── [6] Mount/Unmount            - Mount operations, /etc/fstab
 │   └── [7] View Disk Information    - Comprehensive disk overview
+│
+├── [4] Package Management (apt/yum/dnf)
+│   ├── [1] Update Package Lists     - Refresh available packages
+│   ├── [2] Install a Package        - Install new software
+│   ├── [3] Remove a Package         - Uninstall software
+│   ├── [4] Upgrade System           - Update all packages
+│   ├── [5] Search Package           - Find packages by name
+│   ├── [6] List Installed Packages  - Show installed software
+│   └── [7] Clean Package Cache      - Free up disk space
 │
 └── [0] Exit
 ```
