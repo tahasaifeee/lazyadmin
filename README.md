@@ -29,11 +29,13 @@ A fast and lightweight terminal UI (TUI) for Linux system administration, built 
 The interface features:
 - Clean dialog-based menus
 - Hierarchical navigation (Main Menu → Submenus → Actions)
-- Two main sections:
+- Three main sections:
   - **System Information**: System Info, Services, Processes, Disk Usage
   - **User & Group Management**: 8 different user/group operations
+  - **Disk Management**: LVM, RAID, ZFS, Partitioning, Filesystems, Mount operations
 - Real-time data display
 - Interactive prompts for user actions
+- No commands required - everything through menus
 
 ## Installation
 
@@ -98,6 +100,15 @@ LazyAdmin Main Menu
 │   ├── [g] Change User Shell        - Modify user's shell
 │   └── [h] Lock/Unlock User         - Lock/unlock account
 │
+├── [3] Disk Management (LVM, RAID, ZFS)
+│   ├── [1] LVM Management           - Physical Volumes, Volume Groups, Logical Volumes
+│   ├── [2] RAID Management          - Create/manage mdadm RAID arrays
+│   ├── [3] ZFS Management           - Pools, datasets, snapshots
+│   ├── [4] Disk Partitioning        - fdisk, parted, lsblk
+│   ├── [5] Filesystem Operations    - Create, check, resize filesystems
+│   ├── [6] Mount/Unmount            - Mount operations, /etc/fstab
+│   └── [7] View Disk Information    - Comprehensive disk overview
+│
 └── [0] Exit
 ```
 
@@ -146,6 +157,46 @@ Complete user administration:
 - Set and reset passwords
 - Change user shells (bash, zsh, sh, fish, custom)
 - Lock/unlock user accounts
+
+### Disk Management
+
+Comprehensive disk and storage management:
+
+**LVM (Logical Volume Management):**
+- View Physical Volumes, Volume Groups, Logical Volumes
+- Create PV, VG, LV with guided prompts
+- Extend logical volumes and resize filesystems
+- Remove LVs and VGs safely
+
+**RAID Management (mdadm):**
+- View RAID arrays and status
+- Create RAID 0, 1, 5, 6, 10 arrays
+- Add/remove disks from arrays
+- Stop, assemble, and check RAID status
+
+**ZFS Management:**
+- Create and manage ZFS pools
+- Create datasets and snapshots
+- Rollback to snapshots
+- View pool status
+
+**Disk Partitioning:**
+- Interactive fdisk and parted support
+- List partitions and block devices
+- Safe partition table editing
+
+**Filesystem Operations:**
+- Create filesystems (ext4, ext3, xfs, btrfs, vfat, ntfs)
+- Check and repair filesystems (fsck)
+- Resize filesystems (resize2fs, xfs_growfs)
+- Tune filesystem parameters
+- Set filesystem labels
+
+**Mount/Unmount Operations:**
+- View mounted filesystems
+- Mount/unmount with guided prompts
+- Auto-create mount points
+- Edit and view /etc/fstab safely
 
 ## Why LazyAdmin?
 
