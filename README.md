@@ -20,6 +20,13 @@ A fast and lightweight terminal UI (TUI) for Linux system administration, built 
   - Set passwords
   - Change user shells
   - Lock/unlock user accounts
+- **Disk Management (LVM, RAID, ZFS)**: Complete storage administration
+  - **LVM**: Create/manage Physical Volumes, Volume Groups, Logical Volumes
+  - **RAID**: Configure and manage mdadm RAID arrays (0, 1, 5, 6, 10)
+  - **ZFS**: Manage ZFS pools, datasets, and snapshots
+  - **Partitioning**: Interactive fdisk/parted disk partitioning
+  - **Filesystems**: Create, check, resize, and manage filesystems
+  - **Mount Operations**: Mount/unmount with /etc/fstab management
 - **Fast & Lightweight**: Instant startup, minimal resource usage
 - **No Compilation Required**: Just bash scripts
 - **Easy Navigation**: Menu-driven interface using arrow keys
