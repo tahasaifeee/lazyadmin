@@ -170,7 +170,7 @@ disk_management_menu() {
 
         case $choice in
             1) echo "LVM Management - Feature coming soon"; read -p "Press Enter to continue..." ;;
-            2) echo "RAID Management - Feature coming soon"; read -p "Press Enter to continue..." ;;
+            2) manage_raid ;;
             3) echo "ZFS Management - Feature coming soon"; read -p "Press Enter to continue..." ;;
             4) echo "Disk Partitioning - Feature coming soon"; read -p "Press Enter to continue..." ;;
             5) echo "Filesystem Operations - Feature coming soon"; read -p "Press Enter to continue..." ;;
@@ -886,13 +886,316 @@ lock_unlock_user() {
 
 view_disk_info() {
     clear
-    echo -e "${CYAN}${BOLD}DISK INFORMATION${NC}"
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_CYAN}ℹ  ${WHITE}${BOLD}DISK INFORMATION${NC}                                          ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
-    echo -e "${GREEN}DISK USAGE:${NC}"
+
+    echo -e "${BRIGHT_YELLOW}┌─ Disk Usage ─────────────────────────────────────────────────┐${NC}"
     df -h | grep -E '^Filesystem|^/dev/'
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
     echo ""
-    echo -e "${GREEN}BLOCK DEVICES:${NC}"
+
+    echo -e "${BRIGHT_CYAN}┌─ Block Devices ──────────────────────────────────────────────┐${NC}"
     lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT
+    echo -e "${BRIGHT_CYAN}└──────────────────────────────────────────────────────────────┘${NC}"
+
+    echo ""
+    echo -e "${DIM}Press Enter to continue...${NC}"
+    read
+}
+
+# RAID Management
+manage_raid() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_YELLOW}⚡ ${WHITE}${BOLD}RAID MANAGEMENT (mdadm)${NC}                                   ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # Check if mdadm is installed
+    if ! command -v mdadm &> /dev/null; then
+        echo -e "${YELLOW}mdadm is not installed.${NC}"
+        echo ""
+        read -p "Would you like to install it? (y/n): " -n 1 install_choice
+        echo ""
+
+        if [[ $install_choice =~ ^[Yy]$ ]]; then
+            PKG_MGR=$(detect_package_manager)
+            case $PKG_MGR in
+                apt) sudo apt install -y mdadm ;;
+                dnf) sudo dnf install -y mdadm ;;
+                yum) sudo yum install -y mdadm ;;
+                *) echo -e "${RED}Could not install mdadm${NC}"; read -p "Press Enter..."; return ;;
+            esac
+        else
+            read -p "Press Enter to continue..."
+            return
+        fi
+    fi
+
+    echo -e "${BRIGHT_CYAN}RAID Operations:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} View RAID Arrays"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} Create RAID Array ${DIM}(wizard)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[3]${NC} Stop RAID Array"
+    echo -e "  ${BRIGHT_GREEN}[4]${NC} Remove RAID Array"
+    echo -e "  ${BRIGHT_RED}[0]${NC} Back"
+    echo ""
+    read -p "Choose option: " -n 1 raid_choice
+    echo ""
+    echo ""
+
+    case $raid_choice in
+        1) view_raid_arrays ;;
+        2) create_raid_wizard ;;
+        3) stop_raid_array ;;
+        4) remove_raid_array ;;
+        0) return ;;
+    esac
+}
+
+view_raid_arrays() {
+    clear
+    echo -e "${BRIGHT_CYAN}${BOLD}RAID ARRAYS STATUS${NC}"
+    echo ""
+
+    if [ ! -f /proc/mdstat ]; then
+        echo -e "${YELLOW}No RAID support in kernel${NC}"
+    else
+        cat /proc/mdstat
+    fi
+
+    echo ""
+    echo -e "${BRIGHT_GREEN}Detailed RAID Information:${NC}"
+    echo ""
+    sudo mdadm --detail --scan 2>/dev/null || echo -e "${DIM}No RAID arrays found${NC}"
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+create_raid_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_GREEN}🔧 ${WHITE}${BOLD}CREATE RAID ARRAY - Wizard${NC}                               ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # Auto-detect available disks
+    echo -e "${BRIGHT_CYAN}Auto-detecting available disks...${NC}"
+    echo ""
+
+    mapfile -t disks < <(lsblk -dpno NAME,SIZE,TYPE | grep disk | awk '{print $1 " (" $2 ")"}')
+
+    if [ ${#disks[@]} -lt 2 ]; then
+        echo -e "${RED}Need at least 2 disks for RAID. Found: ${#disks[@]}${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Disks ────────────────────────────────────────────┐${NC}"
+    local i=1
+    for disk in "${disks[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$disk"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    # Select RAID level
+    echo -e "${BRIGHT_BLUE}Select RAID Level:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} RAID 0 ${DIM}(Striping - 2+ disks, no redundancy, max performance)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} RAID 1 ${DIM}(Mirroring - 2+ disks, full redundancy)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[3]${NC} RAID 5 ${DIM}(Striping + Parity - 3+ disks, 1 disk redundancy)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[4]${NC} RAID 6 ${DIM}(Double Parity - 4+ disks, 2 disk redundancy)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[5]${NC} RAID 10 ${DIM}(Mirrored Striping - 4+ disks, best of both)${NC}"
+    echo ""
+    read -p "Choose RAID level (1-5, 0 to cancel): " -n 1 raid_level
+    echo ""
+    echo ""
+
+    local raid_type min_disks
+    case $raid_level in
+        1) raid_type="0"; min_disks=2 ;;
+        2) raid_type="1"; min_disks=2 ;;
+        3) raid_type="5"; min_disks=3 ;;
+        4) raid_type="6"; min_disks=4 ;;
+        5) raid_type="10"; min_disks=4 ;;
+        0) return ;;
+        *) echo -e "${RED}Invalid choice${NC}"; read -p "Press Enter..."; return ;;
+    esac
+
+    if [ ${#disks[@]} -lt $min_disks ]; then
+        echo -e "${RED}RAID $raid_type requires at least $min_disks disks. Found: ${#disks[@]}${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Select disks
+    echo -e "${BRIGHT_CYAN}Select disks for RAID $raid_type (minimum: $min_disks)${NC}"
+    echo -e "${DIM}Enter disk numbers separated by spaces (e.g., 1 2 3):${NC}"
+    read -p "> " disk_selection
+
+    # Parse selection
+    local selected_disks=()
+    for num in $disk_selection; do
+        if [[ "$num" =~ ^[0-9]+$ ]] && [ "$num" -ge 1 ] && [ "$num" -le ${#disks[@]} ]; then
+            local disk_path=$(echo "${disks[$((num-1))]}" | awk '{print $1}')
+            selected_disks+=("$disk_path")
+        fi
+    done
+
+    if [ ${#selected_disks[@]} -lt $min_disks ]; then
+        echo -e "${RED}Not enough valid disks selected${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # RAID device name
+    echo ""
+    read -p "Enter RAID device name (e.g., md0): " raid_name
+    raid_name="/dev/${raid_name#/dev/}"
+
+    # Confirmation
+    echo ""
+    echo -e "${BRIGHT_YELLOW}⚠  RAID Configuration Summary:${NC}"
+    echo -e "  ${WHITE}RAID Level:${NC} ${BRIGHT_CYAN}$raid_type${NC}"
+    echo -e "  ${WHITE}Device:${NC} ${BRIGHT_CYAN}$raid_name${NC}"
+    echo -e "  ${WHITE}Disks:${NC} ${BRIGHT_CYAN}${selected_disks[*]}${NC}"
+    echo -e "  ${WHITE}Count:${NC} ${BRIGHT_CYAN}${#selected_disks[@]} disks${NC}"
+    echo ""
+    echo -e "${BRIGHT_RED}WARNING: This will erase all data on selected disks!${NC}"
+    read -p "Continue? (yes/no): " confirm
+
+    if [ "$confirm" != "yes" ]; then
+        echo -e "${YELLOW}Cancelled${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Create RAID
+    echo ""
+    echo -e "${BRIGHT_GREEN}Creating RAID array...${NC}"
+    sudo mdadm --create "$raid_name" --level="$raid_type" --raid-devices="${#selected_disks[@]}" "${selected_disks[@]}"
+
+    if [ $? -eq 0 ]; then
+        echo ""
+        echo -e "${BRIGHT_GREEN}✓ RAID array created successfully!${NC}"
+        echo ""
+        echo -e "${BRIGHT_CYAN}Array details:${NC}"
+        sudo mdadm --detail "$raid_name"
+    else
+        echo -e "${BRIGHT_RED}✗ Failed to create RAID array${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+stop_raid_array() {
+    clear
+    echo -e "${BRIGHT_CYAN}${BOLD}STOP RAID ARRAY${NC}"
+    echo ""
+
+    # List active arrays
+    mapfile -t arrays < <(cat /proc/mdstat | grep ^md | awk '{print $1}')
+
+    if [ ${#arrays[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No active RAID arrays found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}Active RAID Arrays:${NC}"
+    local i=1
+    for array in "${arrays[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} /dev/%s\n" "$i" "$array"
+        ((i++))
+    done
+    echo ""
+
+    read -p "Enter array number to stop (0 to cancel): " array_num
+
+    if [ -z "$array_num" ] || [ "$array_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$array_num" =~ ^[0-9]+$ ]] || [ "$array_num" -lt 1 ] || [ "$array_num" -gt ${#arrays[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local array_name="/dev/${arrays[$((array_num-1))]}"
+
+    echo ""
+    echo -e "${BRIGHT_YELLOW}⚠  Stopping RAID array: ${BRIGHT_RED}$array_name${NC}"
+    read -p "Continue? (y/n): " -n 1 confirm
+    echo ""
+
+    if [[ $confirm =~ ^[Yy]$ ]]; then
+        sudo mdadm --stop "$array_name"
+        if [ $? -eq 0 ]; then
+            echo -e "${BRIGHT_GREEN}✓ Array stopped${NC}"
+        else
+            echo -e "${BRIGHT_RED}✗ Failed to stop array${NC}"
+        fi
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+remove_raid_array() {
+    clear
+    echo -e "${BRIGHT_CYAN}${BOLD}REMOVE RAID ARRAY${NC}"
+    echo ""
+
+    # List arrays
+    mapfile -t arrays < <(cat /proc/mdstat 2>/dev/null | grep ^md | awk '{print $1}')
+
+    if [ ${#arrays[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No RAID arrays found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}RAID Arrays:${NC}"
+    local i=1
+    for array in "${arrays[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} /dev/%s\n" "$i" "$array"
+        ((i++))
+    done
+    echo ""
+
+    read -p "Enter array number to remove (0 to cancel): " array_num
+
+    if [ -z "$array_num" ] || [ "$array_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$array_num" =~ ^[0-9]+$ ]] || [ "$array_num" -lt 1 ] || [ "$array_num" -gt ${#arrays[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local array_name="/dev/${arrays[$((array_num-1))]}"
+
+    echo ""
+    echo -e "${BRIGHT_RED}⚠  WARNING: This will permanently remove RAID array: $array_name${NC}"
+    read -p "Type 'yes' to confirm: " confirm
+
+    if [ "$confirm" = "yes" ]; then
+        sudo mdadm --stop "$array_name" 2>/dev/null
+        sudo mdadm --remove "$array_name" 2>/dev/null
+        sudo mdadm --zero-superblock "$array_name" 2>/dev/null
+
+        echo -e "${BRIGHT_GREEN}✓ Array removed${NC}"
+    else
+        echo -e "${YELLOW}Cancelled${NC}"
+    fi
+
     echo ""
     read -p "Press Enter to continue..."
 }
