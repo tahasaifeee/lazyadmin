@@ -53,21 +53,17 @@ check_root() {
 check_dependencies() {
     print_message "$BLUE" "→ Checking dependencies..."
 
-    if ! command -v dialog &> /dev/null && ! command -v whiptail &> /dev/null; then
-        print_message "$RED" "❌ Neither 'dialog' nor 'whiptail' is installed."
-        print_message "$YELLOW" "Please install dialog:"
-        print_message "$YELLOW" "  Ubuntu/Debian: sudo apt-get install dialog"
-        print_message "$YELLOW" "  RHEL/CentOS:   sudo yum install dialog"
-        print_message "$YELLOW" "  Arch:          sudo pacman -S dialog"
-        exit 1
-    fi
-
     if ! command -v git &> /dev/null; then
         print_message "$RED" "❌ Git is not installed. Please install git."
+        print_message "$YELLOW" "Install git:"
+        print_message "$YELLOW" "  Ubuntu/Debian: sudo apt-get install git"
+        print_message "$YELLOW" "  RHEL/CentOS:   sudo yum install git"
+        print_message "$YELLOW" "  Fedora:        sudo dnf install git"
+        print_message "$YELLOW" "  Arch:          sudo pacman -S git"
         exit 1
     fi
 
-    print_message "$GREEN" "✓ All dependencies are installed"
+    print_message "$GREEN" "✓ All dependencies satisfied (pure Bash, no external tools needed)"
 }
 
 # Clone repository if needed

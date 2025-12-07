@@ -59,24 +59,24 @@ check_dependencies() {
     # Check for git
     if ! command -v git &> /dev/null; then
         print_message "$YELLOW" "→ Installing git..."
-        apt-get update -qq
-        apt-get install -y git || {
+        if command -v apt-get &> /dev/null; then
+            apt-get update -qq && apt-get install -y git
+        elif command -v dnf &> /dev/null; then
+            dnf install -y git
+        elif command -v yum &> /dev/null; then
+            yum install -y git
+        else
+            print_message "$RED" "❌ Could not install git - package manager not supported"
+            exit 1
+        fi
+
+        if ! command -v git &> /dev/null; then
             print_message "$RED" "❌ Failed to install git"
             exit 1
-        }
+        fi
     fi
 
-    # Check for dialog or whiptail
-    if ! command -v dialog &> /dev/null && ! command -v whiptail &> /dev/null; then
-        print_message "$YELLOW" "→ Installing dialog..."
-        apt-get update -qq
-        apt-get install -y dialog || {
-            print_message "$RED" "❌ Failed to install dialog"
-            exit 1
-        }
-    fi
-
-    print_message "$GREEN" "✓ All dependencies are installed"
+    print_message "$GREEN" "✓ All dependencies satisfied (pure Bash, no external tools needed)"
 }
 
 update_lazyadmin() {
