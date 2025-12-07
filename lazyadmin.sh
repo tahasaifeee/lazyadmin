@@ -173,7 +173,7 @@ disk_management_menu() {
             2) manage_raid ;;
             3) manage_zfs ;;
             4) manage_partitioning ;;
-            5) echo "Filesystem Operations - Feature coming soon"; read -p "Press Enter to continue..." ;;
+            5) manage_filesystems ;;
             6) echo "Mount/Unmount - Feature coming soon"; read -p "Press Enter to continue..." ;;
             7) view_disk_info ;;
             0) return ;;
@@ -2641,6 +2641,602 @@ delete_partition_wizard() {
         fi
     else
         echo -e "${YELLOW}parted not found. Use fdisk manually to delete partition.${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Filesystem Operations
+manage_filesystems() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_BLUE}📁 ${WHITE}${BOLD}FILESYSTEM OPERATIONS${NC}                                     ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_CYAN}Filesystem Operations:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} Create Filesystem ${DIM}(mkfs - wizard)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} Check/Repair Filesystem ${DIM}(fsck)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[3]${NC} Resize Filesystem ${DIM}(resize2fs/xfs_growfs)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[4]${NC} View Filesystem Info ${DIM}(detailed)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[5]${NC} Set Filesystem Label"
+    echo -e "  ${BRIGHT_GREEN}[6]${NC} Tune Filesystem ${DIM}(tune2fs)${NC}"
+    echo -e "  ${BRIGHT_RED}[0]${NC} Back"
+    echo ""
+    echo -e "${DIM}${BRIGHT_CYAN}───────────────────────────────────────────────────────────────${NC}"
+    echo -e "${BRIGHT_YELLOW}❯${NC} Press a number key: "
+
+    read -n 1 -s choice
+    echo ""
+
+    case $choice in
+        1) create_filesystem_wizard ;;
+        2) check_repair_filesystem ;;
+        3) resize_filesystem_wizard ;;
+        4) view_filesystem_info ;;
+        5) set_filesystem_label ;;
+        6) tune_filesystem ;;
+        0) return ;;
+    esac
+
+    manage_filesystems
+}
+
+# Create Filesystem Wizard
+create_filesystem_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_GREEN}🔧 ${WHITE}${BOLD}CREATE FILESYSTEM${NC}                                         ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List partitions without filesystems or all partitions
+    mapfile -t partitions < <(lsblk -pno NAME,SIZE,TYPE,FSTYPE | grep -E 'part|lvm' | awk '{print $1 " (" $2 ") [" ($4 ? $4 : "none") "]"}')
+
+    if [ ${#partitions[@]} -eq 0 ]; then
+        echo -e "${RED}No partitions found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Partitions ───────────────────────────────────────┐${NC}"
+    local i=1
+    for partition in "${partitions[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$partition"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter partition number (0 to cancel): " part_num
+
+    if [ -z "$part_num" ] || [ "$part_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$part_num" =~ ^[0-9]+$ ]] || [ "$part_num" -lt 1 ] || [ "$part_num" -gt ${#partitions[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local partition_path=$(echo "${partitions[$((part_num-1))]}" | awk '{print $1}')
+
+    # Select filesystem type
+    echo ""
+    echo -e "${BRIGHT_BLUE}Select Filesystem Type:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} ext4 ${DIM}(default Linux filesystem)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} ext3 ${DIM}(legacy Linux)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[3]${NC} xfs ${DIM}(high performance)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[4]${NC} btrfs ${DIM}(advanced features)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[5]${NC} vfat/FAT32 ${DIM}(USB/compatibility)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[6]${NC} ntfs ${DIM}(Windows compatibility)${NC}"
+    echo ""
+    read -p "Enter filesystem type (0 to cancel): " fs_type
+
+    local mkfs_cmd=""
+    case $fs_type in
+        1) mkfs_cmd="mkfs.ext4" ;;
+        2) mkfs_cmd="mkfs.ext3" ;;
+        3) mkfs_cmd="mkfs.xfs" ;;
+        4) mkfs_cmd="mkfs.btrfs" ;;
+        5) mkfs_cmd="mkfs.vfat" ;;
+        6) mkfs_cmd="mkfs.ntfs" ;;
+        0) return ;;
+        *) echo -e "${RED}Invalid selection${NC}"; read -p "Press Enter..."; return ;;
+    esac
+
+    # Check if tool is available
+    if ! command -v "$mkfs_cmd" &> /dev/null; then
+        echo -e "${YELLOW}$mkfs_cmd not installed.${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Optional label
+    echo ""
+    read -p "Enter filesystem label (or press Enter to skip): " fs_label
+
+    # Confirm
+    echo ""
+    echo -e "${BRIGHT_RED}⚠  WARNING: This will destroy all data on $partition_path!${NC}"
+    echo -e "Filesystem: ${BRIGHT_CYAN}$mkfs_cmd${NC}"
+    if [ -n "$fs_label" ]; then
+        echo -e "Label: ${BRIGHT_CYAN}$fs_label${NC}"
+    fi
+    read -p "Type 'yes' to confirm: " confirm
+
+    if [ "$confirm" != "yes" ]; then
+        echo -e "${YELLOW}Cancelled${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Create filesystem
+    echo ""
+    echo -e "${BRIGHT_CYAN}Creating filesystem...${NC}"
+
+    if [ -n "$fs_label" ]; then
+        sudo "$mkfs_cmd" -L "$fs_label" "$partition_path"
+    else
+        sudo "$mkfs_cmd" "$partition_path"
+    fi
+
+    if [ $? -eq 0 ]; then
+        echo -e "${BRIGHT_GREEN}✓ Filesystem created successfully${NC}"
+        sudo blkid "$partition_path"
+    else
+        echo -e "${BRIGHT_RED}✗ Failed to create filesystem${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Check/Repair Filesystem
+check_repair_filesystem() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_YELLOW}🔍 ${WHITE}${BOLD}CHECK/REPAIR FILESYSTEM${NC}                                   ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List partitions with filesystems
+    mapfile -t partitions < <(lsblk -pno NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT | grep -E 'part|lvm' | grep -v 'swap')
+
+    if [ ${#partitions[@]} -eq 0 ]; then
+        echo -e "${RED}No partitions found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Partitions ───────────────────────────────────────┐${NC}"
+    local i=1
+    for partition in "${partitions[@]}"; do
+        local part_name=$(echo "$partition" | awk '{print $1}')
+        local part_size=$(echo "$partition" | awk '{print $2}')
+        local part_fs=$(echo "$partition" | awk '{print $4}')
+        local part_mount=$(echo "$partition" | awk '{print $5}')
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %-15s ${DIM}Size:${NC}%-8s ${DIM}FS:${NC}%-8s ${DIM}Mount:${NC}%s\n" "$i" "$part_name" "$part_size" "${part_fs:--}" "${part_mount:--}"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter partition number (0 to cancel): " part_num
+
+    if [ -z "$part_num" ] || [ "$part_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$part_num" =~ ^[0-9]+$ ]] || [ "$part_num" -lt 1 ] || [ "$part_num" -gt ${#partitions[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local partition_info="${partitions[$((part_num-1))]}"
+    local partition_path=$(echo "$partition_info" | awk '{print $1}')
+    local partition_mount=$(echo "$partition_info" | awk '{print $5}')
+
+    # Check if mounted
+    if [ -n "$partition_mount" ] && [ "$partition_mount" != "-" ]; then
+        echo ""
+        echo -e "${BRIGHT_RED}⚠  Partition must be unmounted for fsck${NC}"
+        echo -e "Currently mounted at: $partition_mount"
+        read -p "Unmount now? (y/n): " -n 1 unmount_choice
+        echo ""
+
+        if [[ $unmount_choice =~ ^[Yy]$ ]]; then
+            sudo umount "$partition_path"
+            if [ $? -ne 0 ]; then
+                echo -e "${RED}Failed to unmount partition${NC}"
+                read -p "Press Enter to continue..."
+                return
+            fi
+            echo -e "${BRIGHT_GREEN}✓ Unmounted${NC}"
+        else
+            echo -e "${YELLOW}Cancelled${NC}"
+            read -p "Press Enter to continue..."
+            return
+        fi
+    fi
+
+    # Run fsck
+    echo ""
+    echo -e "${BRIGHT_CYAN}Running filesystem check...${NC}"
+    echo -e "${DIM}(This may take a while depending on filesystem size)${NC}"
+    echo ""
+
+    sudo fsck -f "$partition_path"
+
+    echo ""
+    if [ $? -eq 0 ]; then
+        echo -e "${BRIGHT_GREEN}✓ Filesystem check completed${NC}"
+    else
+        echo -e "${BRIGHT_YELLOW}⚠  Filesystem check completed with warnings/repairs${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Resize Filesystem Wizard
+resize_filesystem_wizard() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_GREEN}📏 ${WHITE}${BOLD}RESIZE FILESYSTEM${NC}                                         ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List partitions with filesystems
+    mapfile -t partitions < <(lsblk -pno NAME,SIZE,TYPE,FSTYPE | grep -E 'part|lvm' | awk '{if ($4 != "" && $4 != "swap") print $1 " (" $2 ") [" $4 "]"}')
+
+    if [ ${#partitions[@]} -eq 0 ]; then
+        echo -e "${RED}No partitions with filesystems found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Partitions ───────────────────────────────────────┐${NC}"
+    local i=1
+    for partition in "${partitions[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$partition"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter partition number (0 to cancel): " part_num
+
+    if [ -z "$part_num" ] || [ "$part_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$part_num" =~ ^[0-9]+$ ]] || [ "$part_num" -lt 1 ] || [ "$part_num" -gt ${#partitions[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local partition_info="${partitions[$((part_num-1))]}"
+    local partition_path=$(echo "$partition_info" | awk '{print $1}')
+    local fs_type=$(lsblk -no FSTYPE "$partition_path")
+
+    echo ""
+    echo -e "${BRIGHT_CYAN}Partition: ${WHITE}$partition_path${NC}"
+    echo -e "${BRIGHT_CYAN}Filesystem: ${WHITE}$fs_type${NC}"
+    echo ""
+
+    case $fs_type in
+        ext[234])
+            echo -e "${BRIGHT_YELLOW}Note: For ext filesystems, resize to match partition size automatically${NC}"
+            read -p "Continue? (y/n): " -n 1 confirm
+            echo ""
+
+            if ! [[ $confirm =~ ^[Yy]$ ]]; then
+                return
+            fi
+
+            echo ""
+            echo -e "${BRIGHT_CYAN}Resizing filesystem...${NC}"
+            sudo resize2fs "$partition_path"
+            ;;
+        xfs)
+            local mount_point=$(lsblk -no MOUNTPOINT "$partition_path")
+            if [ -z "$mount_point" ]; then
+                echo -e "${YELLOW}XFS filesystems must be mounted to resize${NC}"
+                read -p "Press Enter to continue..."
+                return
+            fi
+
+            read -p "Resize XFS filesystem? (y/n): " -n 1 confirm
+            echo ""
+
+            if ! [[ $confirm =~ ^[Yy]$ ]]; then
+                return
+            fi
+
+            echo ""
+            echo -e "${BRIGHT_CYAN}Resizing filesystem...${NC}"
+            sudo xfs_growfs "$mount_point"
+            ;;
+        btrfs)
+            local mount_point=$(lsblk -no MOUNTPOINT "$partition_path")
+            if [ -z "$mount_point" ]; then
+                echo -e "${YELLOW}Btrfs filesystems must be mounted to resize${NC}"
+                read -p "Press Enter to continue..."
+                return
+            fi
+
+            read -p "Resize to max? (y/n): " -n 1 confirm
+            echo ""
+
+            if ! [[ $confirm =~ ^[Yy]$ ]]; then
+                return
+            fi
+
+            echo ""
+            echo -e "${BRIGHT_CYAN}Resizing filesystem...${NC}"
+            sudo btrfs filesystem resize max "$mount_point"
+            ;;
+        *)
+            echo -e "${YELLOW}Resize not supported for $fs_type${NC}"
+            read -p "Press Enter to continue..."
+            return
+            ;;
+    esac
+
+    if [ $? -eq 0 ]; then
+        echo -e "${BRIGHT_GREEN}✓ Filesystem resized successfully${NC}"
+    else
+        echo -e "${BRIGHT_RED}✗ Failed to resize filesystem${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# View Filesystem Info
+view_filesystem_info() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_CYAN}📊 ${WHITE}${BOLD}FILESYSTEM INFORMATION${NC}                                    ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List partitions with filesystems
+    mapfile -t partitions < <(lsblk -pno NAME,SIZE,FSTYPE | grep -E 'part|lvm' | awk '{if ($3 != "" && $3 != "swap") print $1 " (" $2 ") [" $3 "]"}')
+
+    if [ ${#partitions[@]} -eq 0 ]; then
+        echo -e "${RED}No partitions with filesystems found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Partitions ───────────────────────────────────────┐${NC}"
+    local i=1
+    for partition in "${partitions[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$partition"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter partition number (0 to cancel): " part_num
+
+    if [ -z "$part_num" ] || [ "$part_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$part_num" =~ ^[0-9]+$ ]] || [ "$part_num" -lt 1 ] || [ "$part_num" -gt ${#partitions[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local partition_path=$(echo "${partitions[$((part_num-1))]}" | awk '{print $1}')
+    local fs_type=$(lsblk -no FSTYPE "$partition_path")
+
+    echo ""
+    echo -e "${BRIGHT_CYAN}Filesystem Information for $partition_path:${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_YELLOW}Basic Info:${NC}"
+    sudo blkid "$partition_path"
+    echo ""
+
+    echo -e "${BRIGHT_YELLOW}Block Device Info:${NC}"
+    lsblk -o NAME,SIZE,TYPE,FSTYPE,MOUNTPOINT,UUID,LABEL "$partition_path"
+    echo ""
+
+    case $fs_type in
+        ext[234])
+            echo -e "${BRIGHT_YELLOW}Ext Filesystem Details:${NC}"
+            sudo tune2fs -l "$partition_path" | grep -E "Filesystem|Block|Inode|Created|Last"
+            ;;
+        xfs)
+            echo -e "${BRIGHT_YELLOW}XFS Filesystem Details:${NC}"
+            sudo xfs_info "$partition_path" 2>/dev/null || echo "Mount to view detailed info"
+            ;;
+        btrfs)
+            echo -e "${BRIGHT_YELLOW}Btrfs Filesystem Details:${NC}"
+            sudo btrfs filesystem show "$partition_path" 2>/dev/null || echo "Btrfs info unavailable"
+            ;;
+    esac
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Set Filesystem Label
+set_filesystem_label() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_GREEN}🏷 ${WHITE}${BOLD}SET FILESYSTEM LABEL${NC}                                      ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List partitions with filesystems
+    mapfile -t partitions < <(lsblk -pno NAME,SIZE,FSTYPE,LABEL | grep -E 'part|lvm' | awk '{if ($3 != "" && $3 != "swap") print $1 " (" $2 ") [" $3 "] - Current: " ($4 ? $4 : "none")}')
+
+    if [ ${#partitions[@]} -eq 0 ]; then
+        echo -e "${RED}No partitions with filesystems found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Partitions ───────────────────────────────────────┐${NC}"
+    local i=1
+    for partition in "${partitions[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$partition"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter partition number (0 to cancel): " part_num
+
+    if [ -z "$part_num" ] || [ "$part_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$part_num" =~ ^[0-9]+$ ]] || [ "$part_num" -lt 1 ] || [ "$part_num" -gt ${#partitions[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local partition_path=$(lsblk -pno NAME,SIZE,FSTYPE,LABEL | grep -E 'part|lvm' | sed -n "${part_num}p" | awk '{print $1}')
+    local fs_type=$(lsblk -no FSTYPE "$partition_path")
+
+    echo ""
+    read -p "Enter new label: " new_label
+
+    if [ -z "$new_label" ]; then
+        echo -e "${RED}Label cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo ""
+    echo -e "${BRIGHT_CYAN}Setting label...${NC}"
+
+    case $fs_type in
+        ext[234])
+            sudo e2label "$partition_path" "$new_label"
+            ;;
+        xfs)
+            sudo xfs_admin -L "$new_label" "$partition_path"
+            ;;
+        vfat|fat)
+            sudo fatlabel "$partition_path" "$new_label"
+            ;;
+        ntfs)
+            sudo ntfslabel "$partition_path" "$new_label"
+            ;;
+        *)
+            echo -e "${YELLOW}Label setting not supported for $fs_type${NC}"
+            read -p "Press Enter to continue..."
+            return
+            ;;
+    esac
+
+    if [ $? -eq 0 ]; then
+        echo -e "${BRIGHT_GREEN}✓ Label set successfully${NC}"
+    else
+        echo -e "${BRIGHT_RED}✗ Failed to set label${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Tune Filesystem
+tune_filesystem() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${BRIGHT_YELLOW}⚙ ${WHITE}${BOLD}TUNE FILESYSTEM${NC}                                           ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List ext filesystems only
+    mapfile -t partitions < <(lsblk -pno NAME,SIZE,FSTYPE | grep -E 'ext[234]' | awk '{print $1 " (" $2 ") [" $3 "]"}')
+
+    if [ ${#partitions[@]} -eq 0 ]; then
+        echo -e "${RED}No ext2/3/4 filesystems found${NC}"
+        echo -e "${YELLOW}(tune2fs only works with ext filesystems)${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Available Ext Filesystems ──────────────────────────────────┐${NC}"
+    local i=1
+    for partition in "${partitions[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$partition"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter partition number (0 to cancel): " part_num
+
+    if [ -z "$part_num" ] || [ "$part_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$part_num" =~ ^[0-9]+$ ]] || [ "$part_num" -lt 1 ] || [ "$part_num" -gt ${#partitions[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local partition_path=$(echo "${partitions[$((part_num-1))]}" | awk '{print $1}')
+
+    echo ""
+    echo -e "${BRIGHT_CYAN}Tuning Options:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} Set reserved blocks percentage"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} Set max mount count"
+    echo -e "  ${BRIGHT_GREEN}[3]${NC} Set check interval (days)"
+    echo -e "  ${BRIGHT_GREEN}[4]${NC} Disable fsck on boot"
+    echo -e "  ${BRIGHT_GREEN}[5]${NC} Enable fsck on boot"
+    echo ""
+    read -p "Select option (0 to cancel): " tune_option
+
+    case $tune_option in
+        1)
+            read -p "Enter reserved blocks percentage (default 5): " reserved
+            if [ -n "$reserved" ]; then
+                sudo tune2fs -m "$reserved" "$partition_path"
+            fi
+            ;;
+        2)
+            read -p "Enter max mount count before fsck (-1 to disable): " max_count
+            if [ -n "$max_count" ]; then
+                sudo tune2fs -c "$max_count" "$partition_path"
+            fi
+            ;;
+        3)
+            read -p "Enter check interval in days (0 to disable): " interval
+            if [ -n "$interval" ]; then
+                sudo tune2fs -i "${interval}d" "$partition_path"
+            fi
+            ;;
+        4)
+            sudo tune2fs -i 0 -c 0 "$partition_path"
+            echo -e "${BRIGHT_GREEN}✓ Disabled fsck on boot${NC}"
+            ;;
+        5)
+            sudo tune2fs -i 180d -c 30 "$partition_path"
+            echo -e "${BRIGHT_GREEN}✓ Enabled fsck on boot (180 days or 30 mounts)${NC}"
+            ;;
+        0) return ;;
+        *) echo -e "${RED}Invalid selection${NC}"; read -p "Press Enter..."; return ;;
+    esac
+
+    if [ $? -eq 0 ] && [ "$tune_option" != "4" ] && [ "$tune_option" != "5" ]; then
+        echo -e "${BRIGHT_GREEN}✓ Filesystem tuned successfully${NC}"
     fi
 
     echo ""
