@@ -3781,7 +3781,9 @@ update_package_lists() {
 
 install_package() {
     clear
-    echo -e "${CYAN}${BOLD}INSTALL PACKAGE${NC}"
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${WHITE}${BOLD}INSTALL PACKAGE${NC}                                              ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 
     PKG_MGR=$(detect_package_manager)
@@ -3792,32 +3794,86 @@ install_package() {
         return
     fi
 
-    read -p "Enter package name to install: " package_name
+    read -p "Enter search term (e.g., apache, nginx, python): " search_term
 
-    if [ -z "$package_name" ]; then
-        echo -e "${RED}Package name cannot be empty${NC}"
+    if [ -z "$search_term" ]; then
+        echo -e "${RED}Search term cannot be empty${NC}"
         read -p "Press Enter to continue..."
         return
     fi
 
     echo ""
+    echo -e "${BRIGHT_CYAN}Searching for packages matching '$search_term'...${NC}"
+    echo ""
+
+    # Search and display packages
     case $PKG_MGR in
         apt)
-            echo -e "${GREEN}Running: sudo apt install $package_name${NC}"
-            echo ""
-            sudo apt install "$package_name"
+            mapfile -t packages < <(apt-cache search "$search_term" 2>/dev/null | head -20 | awk '{print $1}')
             ;;
         dnf)
-            echo -e "${GREEN}Running: sudo dnf install $package_name${NC}"
-            echo ""
-            sudo dnf install "$package_name"
+            mapfile -t packages < <(dnf search "$search_term" 2>/dev/null | grep -v "^=" | grep -v "^Last" | grep ":" | head -20 | awk -F: '{print $1}' | xargs)
             ;;
         yum)
-            echo -e "${GREEN}Running: sudo yum install $package_name${NC}"
-            echo ""
-            sudo yum install "$package_name"
+            mapfile -t packages < <(yum search "$search_term" 2>/dev/null | grep -v "^=" | grep -v "^Loaded" | grep ":" | head -20 | awk -F: '{print $1}' | sed 's/\..*//g' | xargs)
             ;;
     esac
+
+    if [ ${#packages[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No packages found matching '$search_term'${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Found Packages ─────────────────────────────────────────────┐${NC}"
+    local i=1
+    for pkg in "${packages[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$pkg"
+        ((i++))
+        if [ $i -gt 20 ]; then
+            break
+        fi
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter package number to install (0 to cancel): " pkg_num
+
+    if [ -z "$pkg_num" ] || [ "$pkg_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$pkg_num" =~ ^[0-9]+$ ]] || [ "$pkg_num" -lt 1 ] || [ "$pkg_num" -gt ${#packages[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local package_name="${packages[$((pkg_num-1))]}"
+
+    echo ""
+    echo -e "${BRIGHT_CYAN}Installing: ${WHITE}$package_name${NC}"
+    echo ""
+
+    case $PKG_MGR in
+        apt)
+            sudo apt install -y "$package_name"
+            ;;
+        dnf)
+            sudo dnf install -y "$package_name"
+            ;;
+        yum)
+            sudo yum install -y "$package_name"
+            ;;
+    esac
+
+    if [ $? -eq 0 ]; then
+        echo ""
+        echo -e "${BRIGHT_GREEN}✓ Package installed successfully${NC}"
+    else
+        echo ""
+        echo -e "${BRIGHT_RED}✗ Installation failed${NC}"
+    fi
 
     echo ""
     read -p "Press Enter to continue..."
@@ -3825,7 +3881,9 @@ install_package() {
 
 remove_package() {
     clear
-    echo -e "${CYAN}${BOLD}REMOVE PACKAGE${NC}"
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${WHITE}${BOLD}REMOVE PACKAGE${NC}                                               ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 
     PKG_MGR=$(detect_package_manager)
@@ -3836,42 +3894,97 @@ remove_package() {
         return
     fi
 
-    read -p "Enter package name to remove: " package_name
+    read -p "Enter search term for installed packages: " search_term
 
-    if [ -z "$package_name" ]; then
-        echo -e "${RED}Package name cannot be empty${NC}"
+    if [ -z "$search_term" ]; then
+        echo -e "${RED}Search term cannot be empty${NC}"
         read -p "Press Enter to continue..."
         return
     fi
 
     echo ""
-    read -p "Are you sure you want to remove $package_name? (y/n): " -n 1 confirm
+    echo -e "${BRIGHT_CYAN}Searching installed packages matching '$search_term'...${NC}"
+    echo ""
+
+    # Search installed packages
+    case $PKG_MGR in
+        apt)
+            mapfile -t packages < <(dpkg -l | grep "$search_term" | awk '{print $2}' | head -20)
+            ;;
+        dnf)
+            mapfile -t packages < <(dnf list installed | grep "$search_term" | awk '{print $1}' | sed 's/\..*//g' | head -20)
+            ;;
+        yum)
+            mapfile -t packages < <(yum list installed | grep "$search_term" | awk '{print $1}' | sed 's/\..*//g' | head -20)
+            ;;
+    esac
+
+    if [ ${#packages[@]} -eq 0 ]; then
+        echo -e "${YELLOW}No installed packages found matching '$search_term'${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_YELLOW}┌─ Installed Packages ─────────────────────────────────────────┐${NC}"
+    local i=1
+    for pkg in "${packages[@]}"; do
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$pkg"
+        ((i++))
+        if [ $i -gt 20 ]; then
+            break
+        fi
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    read -p "Enter package number to remove (0 to cancel): " pkg_num
+
+    if [ -z "$pkg_num" ] || [ "$pkg_num" -eq 0 ] 2>/dev/null; then
+        return
+    fi
+
+    if ! [[ "$pkg_num" =~ ^[0-9]+$ ]] || [ "$pkg_num" -lt 1 ] || [ "$pkg_num" -gt ${#packages[@]} ]; then
+        echo -e "${RED}Invalid selection${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local package_name="${packages[$((pkg_num-1))]}"
+
+    echo ""
+    echo -e "${BRIGHT_RED}⚠  Remove: ${WHITE}$package_name${NC}"
+    read -p "Are you sure? (y/n): " -n 1 confirm
     echo ""
 
     if [[ ! $confirm =~ ^[Yy]$ ]]; then
-        echo "Cancelled."
+        echo -e "${YELLOW}Cancelled${NC}"
         read -p "Press Enter to continue..."
         return
     fi
 
     echo ""
+    echo -e "${BRIGHT_CYAN}Removing: ${WHITE}$package_name${NC}"
+    echo ""
+
     case $PKG_MGR in
         apt)
-            echo -e "${GREEN}Running: sudo apt remove $package_name${NC}"
-            echo ""
-            sudo apt remove "$package_name"
+            sudo apt remove -y "$package_name"
             ;;
         dnf)
-            echo -e "${GREEN}Running: sudo dnf remove $package_name${NC}"
-            echo ""
-            sudo dnf remove "$package_name"
+            sudo dnf remove -y "$package_name"
             ;;
         yum)
-            echo -e "${GREEN}Running: sudo yum remove $package_name${NC}"
-            echo ""
-            sudo yum remove "$package_name"
+            sudo yum remove -y "$package_name"
             ;;
     esac
+
+    if [ $? -eq 0 ]; then
+        echo ""
+        echo -e "${BRIGHT_GREEN}✓ Package removed successfully${NC}"
+    else
+        echo ""
+        echo -e "${BRIGHT_RED}✗ Removal failed${NC}"
+    fi
 
     echo ""
     read -p "Press Enter to continue..."
@@ -3879,29 +3992,152 @@ remove_package() {
 
 upgrade_system() {
     clear
-    echo -e "${CYAN}${BOLD}UPGRADE SYSTEM${NC}"
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${WHITE}${BOLD}UPGRADE SYSTEM${NC}                                                ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
     echo ""
 
     PKG_MGR=$(detect_package_manager)
 
-    case $PKG_MGR in
-        apt)
-            echo -e "${GREEN}Running: sudo apt update && sudo apt upgrade${NC}"
+    if [ "$PKG_MGR" == "none" ]; then
+        echo -e "${RED}No supported package manager found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_CYAN}Upgrade options:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} Upgrade all packages ${DIM}(full system upgrade)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} Upgrade specific package ${DIM}(search and select)${NC}"
+    echo ""
+    read -p "Enter choice (1-2): " upgrade_choice
+
+    case $upgrade_choice in
+        1)
+            # Full system upgrade
             echo ""
-            sudo apt update && sudo apt upgrade
+            echo -e "${BRIGHT_YELLOW}⚠  This will upgrade all packages on your system${NC}"
+            read -p "Continue? (y/n): " -n 1 confirm
+            echo ""
+
+            if [[ ! $confirm =~ ^[Yy]$ ]]; then
+                echo -e "${YELLOW}Cancelled${NC}"
+                read -p "Press Enter to continue..."
+                return
+            fi
+
+            echo ""
+            case $PKG_MGR in
+                apt)
+                    echo -e "${BRIGHT_CYAN}Running: sudo apt update && sudo apt upgrade${NC}"
+                    echo ""
+                    sudo apt update && sudo apt upgrade -y
+                    ;;
+                dnf)
+                    echo -e "${BRIGHT_CYAN}Running: sudo dnf upgrade${NC}"
+                    echo ""
+                    sudo dnf upgrade -y
+                    ;;
+                yum)
+                    echo -e "${BRIGHT_CYAN}Running: sudo yum update${NC}"
+                    echo ""
+                    sudo yum update -y
+                    ;;
+            esac
+
+            if [ $? -eq 0 ]; then
+                echo ""
+                echo -e "${BRIGHT_GREEN}✓ System upgraded successfully${NC}"
+            else
+                echo ""
+                echo -e "${BRIGHT_RED}✗ Upgrade failed${NC}"
+            fi
             ;;
-        dnf)
-            echo -e "${GREEN}Running: sudo dnf upgrade${NC}"
+        2)
+            # Specific package upgrade
             echo ""
-            sudo dnf upgrade
-            ;;
-        yum)
-            echo -e "${GREEN}Running: sudo yum update${NC}"
+            read -p "Enter package name to search: " search_term
+
+            if [ -z "$search_term" ]; then
+                echo -e "${RED}Search term cannot be empty${NC}"
+                read -p "Press Enter to continue..."
+                return
+            fi
+
             echo ""
-            sudo yum update
+            echo -e "${BRIGHT_CYAN}Searching for upgradable packages matching '$search_term'...${NC}"
+            echo ""
+
+            # List upgradable packages
+            case $PKG_MGR in
+                apt)
+                    mapfile -t packages < <(apt list --upgradable 2>/dev/null | grep "$search_term" | awk -F'/' '{print $1}' | head -20)
+                    ;;
+                dnf)
+                    mapfile -t packages < <(dnf list updates 2>/dev/null | grep "$search_term" | awk '{print $1}' | sed 's/\..*//g' | head -20)
+                    ;;
+                yum)
+                    mapfile -t packages < <(yum list updates 2>/dev/null | grep "$search_term" | awk '{print $1}' | sed 's/\..*//g' | head -20)
+                    ;;
+            esac
+
+            if [ ${#packages[@]} -eq 0 ]; then
+                echo -e "${YELLOW}No upgradable packages found matching '$search_term'${NC}"
+                read -p "Press Enter to continue..."
+                return
+            fi
+
+            echo -e "${BRIGHT_YELLOW}┌─ Upgradable Packages ────────────────────────────────────────┐${NC}"
+            local i=1
+            for pkg in "${packages[@]}"; do
+                printf "  ${BRIGHT_GREEN}[%2d]${NC} %s\n" "$i" "$pkg"
+                ((i++))
+                if [ $i -gt 20 ]; then
+                    break
+                fi
+            done
+            echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+            echo ""
+
+            read -p "Enter package number to upgrade (0 to cancel): " pkg_num
+
+            if [ -z "$pkg_num" ] || [ "$pkg_num" -eq 0 ] 2>/dev/null; then
+                return
+            fi
+
+            if ! [[ "$pkg_num" =~ ^[0-9]+$ ]] || [ "$pkg_num" -lt 1 ] || [ "$pkg_num" -gt ${#packages[@]} ]; then
+                echo -e "${RED}Invalid selection${NC}"
+                read -p "Press Enter to continue..."
+                return
+            fi
+
+            local package_name="${packages[$((pkg_num-1))]}"
+
+            echo ""
+            echo -e "${BRIGHT_CYAN}Upgrading: ${WHITE}$package_name${NC}"
+            echo ""
+
+            case $PKG_MGR in
+                apt)
+                    sudo apt install --only-upgrade -y "$package_name"
+                    ;;
+                dnf)
+                    sudo dnf upgrade -y "$package_name"
+                    ;;
+                yum)
+                    sudo yum update -y "$package_name"
+                    ;;
+            esac
+
+            if [ $? -eq 0 ]; then
+                echo ""
+                echo -e "${BRIGHT_GREEN}✓ Package upgraded successfully${NC}"
+            else
+                echo ""
+                echo -e "${BRIGHT_RED}✗ Upgrade failed${NC}"
+            fi
             ;;
         *)
-            echo -e "${RED}No supported package manager found${NC}"
+            echo -e "${RED}Invalid choice${NC}"
             ;;
     esac
 
