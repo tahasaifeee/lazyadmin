@@ -48,16 +48,16 @@ main_menu() {
         echo -e "${BRIGHT_CYAN}│${NC}  ${WHITE}${BOLD}MAIN MENU${NC}                                                   ${BRIGHT_CYAN}│${NC}"
         echo -e "${BRIGHT_CYAN}╰─────────────────────────────────────────────────────────────╯${NC}"
         echo ""
-        echo -e "  ${BRIGHT_GREEN}[1]${NC} ${BRIGHT_BLUE}⚙${NC}  ${WHITE}System Information${NC}"
-        echo -e "  ${BRIGHT_GREEN}[2]${NC} ${BRIGHT_YELLOW}👥${NC}  ${WHITE}User & Group Management${NC}"
-        echo -e "  ${BRIGHT_GREEN}[3]${NC} ${BRIGHT_PURPLE}💾${NC}  ${WHITE}Disk Management${NC} ${DIM}(LVM, RAID, ZFS)${NC}"
-        echo -e "  ${BRIGHT_GREEN}[4]${NC} ${BRIGHT_CYAN}📦${NC}  ${WHITE}Package Management${NC}"
-        echo -e "  ${BRIGHT_GREEN}[5]${NC} ${BRIGHT_GREEN}🌐${NC}  ${WHITE}Network Tools${NC}"
+        echo -e "  ${BRIGHT_GREEN}[1]${NC} ${WHITE}System Information${NC}"
+        echo -e "  ${BRIGHT_GREEN}[2]${NC} ${WHITE}User & Group Management${NC}"
+        echo -e "  ${BRIGHT_GREEN}[3]${NC} ${WHITE}Disk Management${NC} ${DIM}(LVM, RAID, ZFS)${NC}"
+        echo -e "  ${BRIGHT_GREEN}[4]${NC} ${WHITE}Package Management${NC}"
+        echo -e "  ${BRIGHT_GREEN}[5]${NC} ${WHITE}Network Tools${NC}"
         echo ""
-        echo -e "  ${BRIGHT_RED}[0]${NC} ${RED}✖${NC}  ${WHITE}Exit${NC}"
+        echo -e "  ${BRIGHT_RED}[0]${NC} ${WHITE}Exit${NC}"
         echo ""
         echo -e "${BRIGHT_CYAN}╭─────────────────────────────────────────────────────────────╮${NC}"
-        echo -e "${BRIGHT_CYAN}│${NC} ${BRIGHT_YELLOW}❯${NC} Press a number key to select                            ${BRIGHT_CYAN}│${NC}"
+        echo -e "${BRIGHT_CYAN}│${NC} Press a number key to select                            ${BRIGHT_CYAN}│${NC}"
         echo -e "${BRIGHT_CYAN}╰─────────────────────────────────────────────────────────────╯${NC}"
 
         read -n 1 -s choice
@@ -79,18 +79,18 @@ system_info_menu() {
     while true; do
         show_header
         echo -e "${BRIGHT_CYAN}╭─────────────────────────────────────────────────────────────╮${NC}"
-        echo -e "${BRIGHT_CYAN}│${NC}  ${BRIGHT_BLUE}⚙  ${WHITE}${BOLD}SYSTEM INFORMATION${NC}                                     ${BRIGHT_CYAN}│${NC}"
+        echo -e "${BRIGHT_CYAN}│${NC}  ${BRIGHT_BLUE}${WHITE}${BOLD}SYSTEM INFORMATION${NC}                                     ${BRIGHT_CYAN}│${NC}"
         echo -e "${BRIGHT_CYAN}╰─────────────────────────────────────────────────────────────╯${NC}"
         echo ""
-        echo -e "  ${BRIGHT_GREEN}[1]${NC} ${BRIGHT_CYAN}📊${NC}  ${WHITE}System Info${NC}         ${DIM}- View system metrics & hardware${NC}"
-        echo -e "  ${BRIGHT_GREEN}[2]${NC} ${BRIGHT_PURPLE}🔧${NC}  ${WHITE}Services${NC}            ${DIM}- Manage systemd services${NC}"
-        echo -e "  ${BRIGHT_GREEN}[3]${NC} ${BRIGHT_YELLOW}⚡${NC}  ${WHITE}Processes${NC}           ${DIM}- View running processes${NC}"
-        echo -e "  ${BRIGHT_GREEN}[4]${NC} ${BRIGHT_BLUE}💿${NC}  ${WHITE}Disk Usage${NC}          ${DIM}- Monitor disk space${NC}"
+        echo -e "  ${BRIGHT_GREEN}[1]${NC} ${WHITE}System Info${NC}         ${DIM}- View system metrics & hardware${NC}"
+        echo -e "  ${BRIGHT_GREEN}[2]${NC} ${WHITE}Services${NC}            ${DIM}- Manage systemd services${NC}"
+        echo -e "  ${BRIGHT_GREEN}[3]${NC} ${WHITE}Processes${NC}           ${DIM}- View running processes${NC}"
+        echo -e "  ${BRIGHT_GREEN}[4]${NC} ${WHITE}Disk Usage${NC}          ${DIM}- Monitor disk space${NC}"
         echo ""
-        echo -e "  ${BRIGHT_RED}[0]${NC} ${RED}←${NC}  ${WHITE}Back to Main Menu${NC}"
+        echo -e "  ${BRIGHT_RED}[0]${NC} ${WHITE}Back to Main Menu${NC}"
         echo ""
         echo -e "${DIM}${BRIGHT_CYAN}───────────────────────────────────────────────────────────────${NC}"
-        echo -e "${BRIGHT_YELLOW}❯${NC} Press a number key: "
+        echo -e "Press a number key: "
 
         read -n 1 -s choice
         echo ""
@@ -113,19 +113,19 @@ user_management_menu() {
         echo -e "${BRIGHT_CYAN}│${NC}  ${BRIGHT_YELLOW}👥 ${WHITE}${BOLD}USER & GROUP MANAGEMENT${NC}                                ${BRIGHT_CYAN}│${NC}"
         echo -e "${BRIGHT_CYAN}╰─────────────────────────────────────────────────────────────╯${NC}"
         echo ""
-        echo -e "  ${BRIGHT_GREEN}[1]${NC} ${BRIGHT_CYAN}📋${NC}  ${WHITE}List Users & Groups${NC}      ${DIM}- View all users/groups${NC}"
-        echo -e "  ${BRIGHT_GREEN}[2]${NC} ${BRIGHT_GREEN}➕${NC}  ${WHITE}Create User${NC}              ${DIM}- Add new user account${NC}"
-        echo -e "  ${BRIGHT_GREEN}[3]${NC} ${BRIGHT_RED}➖${NC}  ${WHITE}Delete User${NC}              ${DIM}- Remove user account${NC}"
-        echo -e "  ${BRIGHT_GREEN}[4]${NC} ${BRIGHT_BLUE}👤${NC}  ${WHITE}Add User to Group${NC}        ${DIM}- Grant group membership${NC}"
-        echo -e "  ${BRIGHT_GREEN}[5]${NC} ${BRIGHT_YELLOW}👥${NC}  ${WHITE}Remove User from Group${NC}   ${DIM}- Revoke group membership${NC}"
-        echo -e "  ${BRIGHT_GREEN}[6]${NC} ${BRIGHT_PURPLE}🔑${NC}  ${WHITE}Set/Reset Password${NC}       ${DIM}- Change user password${NC}"
-        echo -e "  ${BRIGHT_GREEN}[7]${NC} ${BRIGHT_CYAN}🐚${NC}  ${WHITE}Change User Shell${NC}        ${DIM}- Modify login shell${NC}"
-        echo -e "  ${BRIGHT_GREEN}[8]${NC} ${BRIGHT_RED}🔒${NC}  ${WHITE}Lock/Unlock User${NC}         ${DIM}- Toggle account lock${NC}"
+        echo -e "  ${BRIGHT_GREEN}[1]${NC} ${WHITE}List Users & Groups${NC}      ${DIM}- View all users/groups${NC}"
+        echo -e "  ${BRIGHT_GREEN}[2]${NC} ${WHITE}Create User${NC}              ${DIM}- Add new user account${NC}"
+        echo -e "  ${BRIGHT_GREEN}[3]${NC} ${WHITE}Delete User${NC}              ${DIM}- Remove user account${NC}"
+        echo -e "  ${BRIGHT_GREEN}[4]${NC} ${WHITE}Add User to Group${NC}        ${DIM}- Grant group membership${NC}"
+        echo -e "  ${BRIGHT_GREEN}[5]${NC} ${WHITE}Remove User from Group${NC}   ${DIM}- Revoke group membership${NC}"
+        echo -e "  ${BRIGHT_GREEN}[6]${NC} ${WHITE}Set/Reset Password${NC}       ${DIM}- Change user password${NC}"
+        echo -e "  ${BRIGHT_GREEN}[7]${NC} ${WHITE}Change User Shell${NC}        ${DIM}- Modify login shell${NC}"
+        echo -e "  ${BRIGHT_GREEN}[8]${NC} ${WHITE}Lock/Unlock User${NC}         ${DIM}- Toggle account lock${NC}"
         echo ""
-        echo -e "  ${BRIGHT_RED}[0]${NC} ${RED}←${NC}  ${WHITE}Back to Main Menu${NC}"
+        echo -e "  ${BRIGHT_RED}[0]${NC} ${WHITE}Back to Main Menu${NC}"
         echo ""
         echo -e "${DIM}${BRIGHT_CYAN}───────────────────────────────────────────────────────────────${NC}"
-        echo -e "${BRIGHT_YELLOW}❯${NC} Press a number key: "
+        echo -e "Press a number key: "
 
         read -n 1 -s choice
         echo ""
@@ -152,18 +152,18 @@ disk_management_menu() {
         echo -e "${BRIGHT_CYAN}│${NC}  ${BRIGHT_PURPLE}💾 ${WHITE}${BOLD}DISK MANAGEMENT${NC} ${DIM}(LVM, RAID, ZFS)${NC}                      ${BRIGHT_CYAN}│${NC}"
         echo -e "${BRIGHT_CYAN}╰─────────────────────────────────────────────────────────────╯${NC}"
         echo ""
-        echo -e "  ${BRIGHT_GREEN}[1]${NC} ${BRIGHT_BLUE}📊${NC}  ${WHITE}LVM Management${NC}           ${DIM}- Physical/Logical Volumes${NC}"
-        echo -e "  ${BRIGHT_GREEN}[2]${NC} ${BRIGHT_YELLOW}⚡${NC}  ${WHITE}RAID Management${NC}          ${DIM}- mdadm RAID arrays${NC}"
-        echo -e "  ${BRIGHT_GREEN}[3]${NC} ${BRIGHT_CYAN}🗄${NC}  ${WHITE}ZFS Management${NC}           ${DIM}- Pools, datasets, snapshots${NC}"
-        echo -e "  ${BRIGHT_GREEN}[4]${NC} ${BRIGHT_PURPLE}🔧${NC}  ${WHITE}Disk Partitioning${NC}        ${DIM}- fdisk, parted${NC}"
-        echo -e "  ${BRIGHT_GREEN}[5]${NC} ${BRIGHT_GREEN}💿${NC}  ${WHITE}Filesystem Operations${NC}    ${DIM}- Create, check, resize${NC}"
-        echo -e "  ${BRIGHT_GREEN}[6]${NC} ${BRIGHT_YELLOW}📌${NC}  ${WHITE}Mount/Unmount${NC}            ${DIM}- Mount operations${NC}"
+        echo -e "  ${BRIGHT_GREEN}[1]${NC} ${WHITE}LVM Management${NC}           ${DIM}- Physical/Logical Volumes${NC}"
+        echo -e "  ${BRIGHT_GREEN}[2]${NC} ${WHITE}RAID Management${NC}          ${DIM}- mdadm RAID arrays${NC}"
+        echo -e "  ${BRIGHT_GREEN}[3]${NC} ${WHITE}ZFS Management${NC}           ${DIM}- Pools, datasets, snapshots${NC}"
+        echo -e "  ${BRIGHT_GREEN}[4]${NC} ${WHITE}Disk Partitioning${NC}        ${DIM}- fdisk, parted${NC}"
+        echo -e "  ${BRIGHT_GREEN}[5]${NC} ${WHITE}Filesystem Operations${NC}    ${DIM}- Create, check, resize${NC}"
+        echo -e "  ${BRIGHT_GREEN}[6]${NC} ${WHITE}Mount/Unmount${NC}            ${DIM}- Mount operations${NC}"
         echo -e "  ${BRIGHT_GREEN}[7]${NC} ${BRIGHT_CYAN}ℹ${NC}  ${WHITE}View Disk Information${NC}    ${DIM}- Comprehensive overview${NC}"
         echo ""
-        echo -e "  ${BRIGHT_RED}[0]${NC} ${RED}←${NC}  ${WHITE}Back to Main Menu${NC}"
+        echo -e "  ${BRIGHT_RED}[0]${NC} ${WHITE}Back to Main Menu${NC}"
         echo ""
         echo -e "${DIM}${BRIGHT_CYAN}───────────────────────────────────────────────────────────────${NC}"
-        echo -e "${BRIGHT_YELLOW}❯${NC} Press a number key: "
+        echo -e "Press a number key: "
 
         read -n 1 -s choice
         echo ""
@@ -189,18 +189,18 @@ package_management_menu() {
         echo -e "${BRIGHT_CYAN}│${NC}  ${BRIGHT_CYAN}📦 ${WHITE}${BOLD}PACKAGE MANAGEMENT${NC}                                      ${BRIGHT_CYAN}│${NC}"
         echo -e "${BRIGHT_CYAN}╰─────────────────────────────────────────────────────────────╯${NC}"
         echo ""
-        echo -e "  ${BRIGHT_GREEN}[1]${NC} ${BRIGHT_BLUE}🔄${NC}  ${WHITE}Update Package Lists${NC}     ${DIM}- apt/yum/dnf update${NC}"
+        echo -e "  ${BRIGHT_GREEN}[1]${NC} ${WHITE}Update Package Lists${NC}     ${DIM}- apt/yum/dnf update${NC}"
         echo -e "  ${BRIGHT_GREEN}[2]${NC} ${BRIGHT_GREEN}⬇${NC}  ${WHITE}Install a Package${NC}        ${DIM}- Install new software${NC}"
-        echo -e "  ${BRIGHT_GREEN}[3]${NC} ${BRIGHT_RED}🗑${NC}  ${WHITE}Remove a Package${NC}         ${DIM}- Uninstall software${NC}"
+        echo -e "  ${BRIGHT_GREEN}[3]${NC} ${WHITE}Remove a Package${NC}         ${DIM}- Uninstall software${NC}"
         echo -e "  ${BRIGHT_GREEN}[4]${NC} ${BRIGHT_YELLOW}⬆${NC}  ${WHITE}Upgrade System${NC}           ${DIM}- Update all packages${NC}"
-        echo -e "  ${BRIGHT_GREEN}[5]${NC} ${BRIGHT_PURPLE}🔍${NC}  ${WHITE}Search Package${NC}           ${DIM}- Find packages${NC}"
-        echo -e "  ${BRIGHT_GREEN}[6]${NC} ${BRIGHT_CYAN}📋${NC}  ${WHITE}List Installed Packages${NC}  ${DIM}- Show installed${NC}"
-        echo -e "  ${BRIGHT_GREEN}[7]${NC} ${BRIGHT_BLUE}🧹${NC}  ${WHITE}Clean Package Cache${NC}      ${DIM}- Free disk space${NC}"
+        echo -e "  ${BRIGHT_GREEN}[5]${NC} ${WHITE}Search Package${NC}           ${DIM}- Find packages${NC}"
+        echo -e "  ${BRIGHT_GREEN}[6]${NC} ${WHITE}List Installed Packages${NC}  ${DIM}- Show installed${NC}"
+        echo -e "  ${BRIGHT_GREEN}[7]${NC} ${WHITE}Clean Package Cache${NC}      ${DIM}- Free disk space${NC}"
         echo ""
-        echo -e "  ${BRIGHT_RED}[0]${NC} ${RED}←${NC}  ${WHITE}Back to Main Menu${NC}"
+        echo -e "  ${BRIGHT_RED}[0]${NC} ${WHITE}Back to Main Menu${NC}"
         echo ""
         echo -e "${DIM}${BRIGHT_CYAN}───────────────────────────────────────────────────────────────${NC}"
-        echo -e "${BRIGHT_YELLOW}❯${NC} Press a number key: "
+        echo -e "Press a number key: "
 
         read -n 1 -s choice
         echo ""
@@ -223,26 +223,24 @@ network_tools_menu() {
     while true; do
         show_header
         echo -e "${BRIGHT_CYAN}╭─────────────────────────────────────────────────────────────╮${NC}"
-        echo -e "${BRIGHT_CYAN}│${NC}  ${BRIGHT_GREEN}🌐 ${WHITE}${BOLD}NETWORK TOOLS${NC}                                           ${BRIGHT_CYAN}│${NC}"
+        echo -e "${BRIGHT_CYAN}│${NC}  ${WHITE}${BOLD}NETWORK TOOLS${NC}                                           ${BRIGHT_CYAN}│${NC}"
         echo -e "${BRIGHT_CYAN}╰─────────────────────────────────────────────────────────────╯${NC}"
         echo ""
-        echo -e "  ${BRIGHT_GREEN}[1]${NC} ${BRIGHT_YELLOW}📡${NC}  ${WHITE}Ping Test${NC}                ${DIM}- Test connectivity${NC}"
-        echo -e "  ${BRIGHT_GREEN}[2]${NC} ${BRIGHT_PURPLE}🗺${NC}  ${WHITE}Traceroute${NC}               ${DIM}- Trace network path${NC}"
-        echo -e "  ${BRIGHT_GREEN}[3]${NC} ${BRIGHT_BLUE}🔍${NC}  ${WHITE}DNS Lookup${NC}               ${DIM}- Resolve domains${NC}"
-        echo -e "  ${BRIGHT_GREEN}[4]${NC} ${BRIGHT_CYAN}🔌${NC}  ${WHITE}Check Open Ports${NC}         ${DIM}- View listening ports${NC}"
-        echo -e "  ${BRIGHT_GREEN}[5]${NC} ${BRIGHT_GREEN}🎯${NC}  ${WHITE}Test Specific Port${NC}       ${DIM}- Check port status${NC}"
-        echo -e "  ${BRIGHT_GREEN}[6]${NC} ${BRIGHT_YELLOW}⚡${NC}  ${WHITE}Network Speed Test${NC}       ${DIM}- Measure bandwidth${NC}"
-        echo -e "  ${BRIGHT_GREEN}[7]${NC} ${BRIGHT_PURPLE}💧${NC}  ${WHITE}Flush DNS Cache${NC}          ${DIM}- Clear DNS cache${NC}"
-        echo -e "  ${BRIGHT_GREEN}[8]${NC} ${BRIGHT_RED}🔄${NC}  ${WHITE}Restart Network Service${NC}  ${DIM}- Restart networking${NC}"
-        echo -e "  ${BRIGHT_GREEN}[9]${NC} ${BRIGHT_BLUE}🛡${NC}  ${WHITE}View Firewall Rules${NC}      ${DIM}- Display firewall${NC}"
+        echo -e "  ${BRIGHT_GREEN}[1]${NC} ${WHITE}Ping Test${NC}                ${DIM}- Test connectivity${NC}"
+        echo -e "  ${BRIGHT_GREEN}[2]${NC} ${WHITE}Traceroute${NC}               ${DIM}- Trace network path${NC}"
+        echo -e "  ${BRIGHT_GREEN}[3]${NC} ${WHITE}DNS Lookup${NC}               ${DIM}- Resolve domains${NC}"
+        echo -e "  ${BRIGHT_GREEN}[4]${NC} ${WHITE}Check Open Ports${NC}         ${DIM}- View listening ports${NC}"
+        echo -e "  ${BRIGHT_GREEN}[5]${NC} ${WHITE}Test Specific Port${NC}       ${DIM}- Check port status${NC}"
+        echo -e "  ${BRIGHT_GREEN}[6]${NC} ${WHITE}Network Speed Test${NC}       ${DIM}- Measure bandwidth${NC}"
+        echo -e "  ${BRIGHT_GREEN}[7]${NC} ${WHITE}Flush DNS Cache${NC}          ${DIM}- Clear DNS cache${NC}"
+        echo -e "  ${BRIGHT_GREEN}[8]${NC} ${WHITE}Restart Network Service${NC}  ${DIM}- Restart networking${NC}"
+        echo -e "  ${BRIGHT_GREEN}[9]${NC} ${WHITE}Create Virtual Interface${NC} ${DIM}- Add virtual NIC${NC}"
+        echo -e "  ${BRIGHT_GREEN}[10]${NC} ${WHITE}Create Network Bond${NC}     ${DIM}- Bond interfaces${NC}"
         echo ""
-        echo -e "  ${BRIGHT_RED}[0]${NC} ${RED}←${NC}  ${WHITE}Back to Main Menu${NC}"
+        echo -e "  ${BRIGHT_RED}[0]${NC} ${WHITE}Back to Main Menu${NC}"
         echo ""
         echo -e "${DIM}${BRIGHT_CYAN}───────────────────────────────────────────────────────────────${NC}"
-        echo -e "${BRIGHT_YELLOW}❯${NC} Press a number key: "
-
-        read -n 1 -s choice
-        echo ""
+        read -p "Enter choice: " choice
 
         case $choice in
             1) ping_test ;;
@@ -253,7 +251,8 @@ network_tools_menu() {
             6) network_speed_test ;;
             7) flush_dns_cache ;;
             8) restart_network_service ;;
-            9) view_firewall_rules ;;
+            9) create_virtual_interface ;;
+            10) create_network_bond ;;
             0) return ;;
         esac
     done
@@ -1706,7 +1705,7 @@ manage_zfs() {
     echo -e "  ${BRIGHT_RED}[0]${NC} Back"
     echo ""
     echo -e "${DIM}${BRIGHT_CYAN}───────────────────────────────────────────────────────────────${NC}"
-    echo -e "${BRIGHT_YELLOW}❯${NC} Press a number key: "
+    echo -e "Press a number key: "
 
     read -n 1 -s choice
     echo ""
@@ -2287,7 +2286,7 @@ manage_partitioning() {
     echo -e "  ${BRIGHT_RED}[0]${NC} Back"
     echo ""
     echo -e "${DIM}${BRIGHT_CYAN}───────────────────────────────────────────────────────────────${NC}"
-    echo -e "${BRIGHT_YELLOW}❯${NC} Press a number key: "
+    echo -e "Press a number key: "
 
     read -n 1 -s choice
     echo ""
@@ -2665,7 +2664,7 @@ manage_filesystems() {
     echo -e "  ${BRIGHT_RED}[0]${NC} Back"
     echo ""
     echo -e "${DIM}${BRIGHT_CYAN}───────────────────────────────────────────────────────────────${NC}"
-    echo -e "${BRIGHT_YELLOW}❯${NC} Press a number key: "
+    echo -e "Press a number key: "
 
     read -n 1 -s choice
     echo ""
@@ -3262,7 +3261,7 @@ manage_mount_operations() {
     echo -e "  ${BRIGHT_RED}[0]${NC} Back"
     echo ""
     echo -e "${DIM}${BRIGHT_CYAN}───────────────────────────────────────────────────────────────${NC}"
-    echo -e "${BRIGHT_YELLOW}❯${NC} Press a number key: "
+    echo -e "Press a number key: "
 
     read -n 1 -s choice
     echo ""
@@ -4347,6 +4346,301 @@ view_firewall_rules() {
     else
         echo -e "${YELLOW}No supported firewall tool found${NC}"
         echo -e "${YELLOW}(Checked: nftables, iptables, firewalld, ufw)${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Create Virtual Interface
+create_virtual_interface() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${WHITE}${BOLD}CREATE VIRTUAL INTERFACE${NC}                                   ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # List existing interfaces
+    echo -e "${BRIGHT_YELLOW}┌─ Existing Interfaces ────────────────────────────────────────┐${NC}"
+    ip -br addr | awk -v green="${BRIGHT_GREEN}" -v white="${WHITE}" -v nc="${NC}" '{printf "  " green "%-15s" nc " " white "%s" nc "\n", $1, $3}'
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_CYAN}Select virtual interface type:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} VLAN ${DIM}(802.1Q tagged)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} Alias ${DIM}(eth0:0, eth0:1, etc.)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[3]${NC} Bridge ${DIM}(virtual switch)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[4]${NC} Dummy ${DIM}(virtual loopback)${NC}"
+    echo ""
+    read -p "Enter type (0 to cancel): " vif_type
+
+    case $vif_type in
+        1)
+            # VLAN
+            read -p "Enter parent interface (e.g., eth0): " parent_iface
+            if ! ip link show "$parent_iface" &>/dev/null; then
+                echo -e "${RED}Interface $parent_iface not found${NC}"
+                read -p "Press Enter to continue..."
+                return
+            fi
+
+            read -p "Enter VLAN ID (1-4094): " vlan_id
+            if ! [[ "$vlan_id" =~ ^[0-9]+$ ]] || [ "$vlan_id" -lt 1 ] || [ "$vlan_id" -gt 4094 ]; then
+                echo -e "${RED}Invalid VLAN ID${NC}"
+                read -p "Press Enter to continue..."
+                return
+            fi
+
+            local vlan_iface="${parent_iface}.${vlan_id}"
+
+            echo ""
+            echo -e "${BRIGHT_CYAN}Creating VLAN interface: $vlan_iface${NC}"
+
+            sudo ip link add link "$parent_iface" name "$vlan_iface" type vlan id "$vlan_id"
+
+            if [ $? -eq 0 ]; then
+                echo -e "${BRIGHT_GREEN}✓ VLAN interface created${NC}"
+
+                read -p "Configure IP address? (y/n): " -n 1 config_ip
+                echo ""
+
+                if [[ $config_ip =~ ^[Yy]$ ]]; then
+                    read -p "Enter IP address (e.g., 192.168.1.10/24): " ip_addr
+                    sudo ip addr add "$ip_addr" dev "$vlan_iface"
+                    sudo ip link set "$vlan_iface" up
+                    echo -e "${BRIGHT_GREEN}✓ IP configured and interface brought up${NC}"
+                fi
+            else
+                echo -e "${BRIGHT_RED}✗ Failed to create VLAN interface${NC}"
+            fi
+            ;;
+        2)
+            # Alias
+            read -p "Enter base interface (e.g., eth0): " base_iface
+            if ! ip link show "$base_iface" &>/dev/null; then
+                echo -e "${RED}Interface $base_iface not found${NC}"
+                read -p "Press Enter to continue..."
+                return
+            fi
+
+            read -p "Enter alias number (e.g., 0 for eth0:0): " alias_num
+            local alias_iface="${base_iface}:${alias_num}"
+
+            read -p "Enter IP address (e.g., 192.168.1.20/24): " ip_addr
+
+            echo ""
+            echo -e "${BRIGHT_CYAN}Creating alias interface: $alias_iface${NC}"
+
+            sudo ifconfig "$alias_iface" "$ip_addr" up 2>/dev/null || sudo ip addr add "$ip_addr" dev "$base_iface" label "$alias_iface"
+
+            if [ $? -eq 0 ]; then
+                echo -e "${BRIGHT_GREEN}✓ Alias interface created${NC}"
+            else
+                echo -e "${BRIGHT_RED}✗ Failed to create alias interface${NC}"
+            fi
+            ;;
+        3)
+            # Bridge
+            if ! command -v brctl &>/dev/null && ! command -v ip &>/dev/null; then
+                echo -e "${YELLOW}Bridge utilities not available${NC}"
+                read -p "Press Enter to continue..."
+                return
+            fi
+
+            read -p "Enter bridge name (e.g., br0): " bridge_name
+
+            echo ""
+            echo -e "${BRIGHT_CYAN}Creating bridge: $bridge_name${NC}"
+
+            sudo ip link add "$bridge_name" type bridge
+            sudo ip link set "$bridge_name" up
+
+            if [ $? -eq 0 ]; then
+                echo -e "${BRIGHT_GREEN}✓ Bridge created${NC}"
+
+                read -p "Add interface to bridge? (y/n): " -n 1 add_iface
+                echo ""
+
+                if [[ $add_iface =~ ^[Yy]$ ]]; then
+                    read -p "Enter interface to add: " iface_to_add
+                    if ip link show "$iface_to_add" &>/dev/null; then
+                        sudo ip link set "$iface_to_add" master "$bridge_name"
+                        echo -e "${BRIGHT_GREEN}✓ Interface added to bridge${NC}"
+                    fi
+                fi
+            else
+                echo -e "${BRIGHT_RED}✗ Failed to create bridge${NC}"
+            fi
+            ;;
+        4)
+            # Dummy
+            read -p "Enter dummy interface name (e.g., dummy0): " dummy_name
+
+            echo ""
+            echo -e "${BRIGHT_CYAN}Creating dummy interface: $dummy_name${NC}"
+
+            sudo ip link add "$dummy_name" type dummy
+
+            if [ $? -eq 0 ]; then
+                echo -e "${BRIGHT_GREEN}✓ Dummy interface created${NC}"
+
+                read -p "Configure IP address? (y/n): " -n 1 config_ip
+                echo ""
+
+                if [[ $config_ip =~ ^[Yy]$ ]]; then
+                    read -p "Enter IP address (e.g., 10.0.0.1/32): " ip_addr
+                    sudo ip addr add "$ip_addr" dev "$dummy_name"
+                    sudo ip link set "$dummy_name" up
+                    echo -e "${BRIGHT_GREEN}✓ IP configured and interface brought up${NC}"
+                fi
+            else
+                echo -e "${BRIGHT_RED}✗ Failed to create dummy interface${NC}"
+            fi
+            ;;
+        0) return ;;
+        *) echo -e "${RED}Invalid selection${NC}" ;;
+    esac
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Create Network Bond
+create_network_bond() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${WHITE}${BOLD}CREATE NETWORK BOND${NC}                                       ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # Check if bonding module is available
+    if ! lsmod | grep -q bonding; then
+        echo -e "${YELLOW}Loading bonding kernel module...${NC}"
+        sudo modprobe bonding
+        if [ $? -ne 0 ]; then
+            echo -e "${RED}Failed to load bonding module${NC}"
+            read -p "Press Enter to continue..."
+            return
+        fi
+        echo -e "${BRIGHT_GREEN}✓ Bonding module loaded${NC}"
+        echo ""
+    fi
+
+    # List available interfaces
+    echo -e "${BRIGHT_YELLOW}┌─ Available Interfaces ───────────────────────────────────────┐${NC}"
+    mapfile -t interfaces < <(ip -br link | awk '$2!="lo" && $1!~/bond/ {print $1}')
+
+    local i=1
+    for iface in "${interfaces[@]}"; do
+        local status=$(ip -br link show "$iface" | awk '{print $2}')
+        printf "  ${BRIGHT_GREEN}[%2d]${NC} %-15s ${DIM}Status:${NC} %s\n" "$i" "$iface" "$status"
+        ((i++))
+    done
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    # Bond configuration
+    read -p "Enter bond name (e.g., bond0): " bond_name
+
+    echo ""
+    echo -e "${BRIGHT_CYAN}Select bonding mode:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} balance-rr ${DIM}(Mode 0: Round-robin)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} active-backup ${DIM}(Mode 1: Active-backup)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[3]${NC} balance-xor ${DIM}(Mode 2: XOR)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[4]${NC} broadcast ${DIM}(Mode 3: Broadcast)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[5]${NC} 802.3ad ${DIM}(Mode 4: LACP)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[6]${NC} balance-tlb ${DIM}(Mode 5: Adaptive transmit load balancing)${NC}"
+    echo -e "  ${BRIGHT_GREEN}[7]${NC} balance-alb ${DIM}(Mode 6: Adaptive load balancing - active-active)${NC}"
+    echo ""
+    read -p "Enter mode (1-7): " mode_choice
+
+    local bond_mode=""
+    local mode_num=""
+    case $mode_choice in
+        1) bond_mode="balance-rr"; mode_num="0" ;;
+        2) bond_mode="active-backup"; mode_num="1" ;;
+        3) bond_mode="balance-xor"; mode_num="2" ;;
+        4) bond_mode="broadcast"; mode_num="3" ;;
+        5) bond_mode="802.3ad"; mode_num="4" ;;
+        6) bond_mode="balance-tlb"; mode_num="5" ;;
+        7) bond_mode="balance-alb"; mode_num="6" ;;
+        *) echo -e "${RED}Invalid mode${NC}"; read -p "Press Enter..."; return ;;
+    esac
+
+    # Select interfaces to bond
+    echo ""
+    echo -e "${BRIGHT_CYAN}Select interfaces to add to bond (space-separated numbers):${NC}"
+    read -p "Enter interface numbers: " iface_nums
+
+    local selected_ifaces=()
+    for num in $iface_nums; do
+        if [[ "$num" =~ ^[0-9]+$ ]] && [ "$num" -ge 1 ] && [ "$num" -le ${#interfaces[@]} ]; then
+            selected_ifaces+=("${interfaces[$((num-1))]}")
+        fi
+    done
+
+    if [ ${#selected_ifaces[@]} -lt 2 ]; then
+        echo -e "${RED}Need at least 2 interfaces for bonding${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Confirm
+    echo ""
+    echo -e "${BRIGHT_YELLOW}┌─ Bond Configuration ─────────────────────────────────────────┐${NC}"
+    echo -e "  Bond name: ${BRIGHT_CYAN}$bond_name${NC}"
+    echo -e "  Mode: ${BRIGHT_CYAN}$bond_mode (mode $mode_num)${NC}"
+    echo -e "  Interfaces: ${BRIGHT_CYAN}${selected_ifaces[*]}${NC}"
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+    read -p "Create this bond? (y/n): " -n 1 confirm
+    echo ""
+
+    if ! [[ $confirm =~ ^[Yy]$ ]]; then
+        echo -e "${YELLOW}Cancelled${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Create bond
+    echo ""
+    echo -e "${BRIGHT_CYAN}Creating bond interface...${NC}"
+
+    sudo ip link add "$bond_name" type bond mode "$mode_num"
+
+    if [ $? -eq 0 ]; then
+        echo -e "${BRIGHT_GREEN}✓ Bond interface created${NC}"
+
+        # Add interfaces to bond
+        for iface in "${selected_ifaces[@]}"; do
+            echo -e "${BRIGHT_CYAN}Adding $iface to bond...${NC}"
+            sudo ip link set "$iface" down
+            sudo ip link set "$iface" master "$bond_name"
+            echo -e "${BRIGHT_GREEN}✓ $iface added${NC}"
+        done
+
+        # Bring up bond
+        sudo ip link set "$bond_name" up
+
+        echo ""
+        echo -e "${BRIGHT_GREEN}✓ Bond $bond_name is now active!${NC}"
+
+        # Configure IP
+        read -p "Configure IP address for bond? (y/n): " -n 1 config_ip
+        echo ""
+
+        if [[ $config_ip =~ ^[Yy]$ ]]; then
+            read -p "Enter IP address (e.g., 192.168.1.10/24): " ip_addr
+            sudo ip addr add "$ip_addr" dev "$bond_name"
+            echo -e "${BRIGHT_GREEN}✓ IP configured${NC}"
+        fi
+
+        # Show bond status
+        echo ""
+        echo -e "${BRIGHT_YELLOW}Bond status:${NC}"
+        cat "/proc/net/bonding/$bond_name" 2>/dev/null || echo "Status info not available"
+    else
+        echo -e "${BRIGHT_RED}✗ Failed to create bond${NC}"
     fi
 
     echo ""
