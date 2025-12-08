@@ -1,111 +1,74 @@
 # LazyAdmin
 
-A fast and lightweight terminal UI (TUI) for Linux system administration, built with pure Bash. LazyAdmin provides an intuitive, menu-driven interface with single-keypress navigation for managing your Linux system without needing to remember complex commands.
+A fast and lightweight terminal UI for Linux system administration built entirely in pure Bash. LazyAdmin simplifies complex system tasks through an intuitive, menu-driven interface with single-keypress navigation—no commands to memorize, no steep learning curve.
 
 ## Features
 
-- **Pure Bash Implementation**: No external language dependencies, instant startup
-- **System Information**: View real-time system metrics including CPU, memory, uptime, and hardware details
-- **Service Management**: Complete control over systemd services
-  - View all services with their current status
-  - Start, stop, restart services
-  - Enable/disable services for boot
-  - View detailed service status
-- **Process Monitoring**: View top processes sorted by memory usage
-- **Disk Usage**: Monitor disk usage across all mount points
-- **User & Group Management**: Comprehensive user and group administration
-  - List all users and groups
-  - Create and delete users
-  - Add/remove users from groups
-  - Set passwords
-  - Change user shells
-  - Lock/unlock user accounts
-- **Package Management**: Universal package manager support (apt/yum/dnf)
-  - Update package lists
-  - Install and remove packages
-  - Upgrade entire system
-  - Search for packages
-  - List installed packages
-  - Clean package cache
-- **Network Tools**: Comprehensive networking utilities
-  - Ping test with customizable packet count
-  - Traceroute for network path analysis
-  - DNS lookup (dig/nslookup/host)
-  - Check open ports (ss/netstat)
-  - Test specific port connectivity
-  - Network speed test (speedtest-cli)
-  - Flush DNS cache (systemd-resolved/dnsmasq/nscd)
-  - Restart network services
-  - View firewall rules (nftables/iptables/firewalld/ufw)
-- **Disk Management (LVM, RAID, ZFS)**: Complete storage administration
-  - **LVM**: Create/manage Physical Volumes, Volume Groups, Logical Volumes
-  - **RAID**: Configure and manage mdadm RAID arrays (0, 1, 5, 6, 10)
-  - **ZFS**: Manage ZFS pools, datasets, and snapshots
-  - **Partitioning**: Interactive fdisk/parted disk partitioning
-  - **Filesystems**: Create, check, resize, and manage filesystems
-  - **Mount Operations**: Mount/unmount with /etc/fstab management
-- **Fast & Lightweight**: Instant startup, minimal resource usage
-- **No Compilation Required**: Just bash scripts
-- **Easy Navigation**: Single-keypress navigation - just press a number, no Enter needed!
-- **No External Dependencies**: Pure bash with no dialog/whiptail required
+- **Zero Dependencies**: Pure Bash with instant startup and minimal resource usage—no compiling, no installing extra tools
+- **Single-Keypress Navigation**: Just press a number, no Enter needed—everything is intuitive and responsive
+- **System Information**: Real-time system metrics (CPU, memory, uptime, hardware details, network interfaces)
+- **Service Management**: Full systemd control—view, start, stop, restart, enable/disable services with status tracking
+- **Process & Disk Monitoring**: View top memory-consuming processes and monitor disk usage across all mount points
+- **User & Group Management**: Create, delete, and manage users; add/remove group memberships; set passwords; lock/unlock accounts
+- **Package Management**: Universal support for apt, yum, and dnf—install, remove, search, upgrade, and manage packages with auto-detection
+- **Network Tools**: Ping, traceroute, DNS lookup, port scanning, speed testing, DNS cache flushing, firewall rule viewing
+- **Disk Management (LVM, RAID, ZFS)**: Create and manage advanced storage—physical volumes, volume groups, logical volumes, RAID arrays, ZFS pools, and filesystem operations
+- **Mount Operations**: Mount/unmount with intelligent /etc/fstab management
 
-## Screenshots
+## User Interface
 
-The interface features:
-- Clean terminal-based menus with color coding
-- Single-keypress navigation (no Enter needed!)
-- Five main sections:
-  - **System Information**: System Info, Services, Processes, Disk Usage
-  - **User & Group Management**: 8 different user/group operations
-  - **Disk Management**: LVM, RAID, ZFS, Partitioning, Filesystems, Mount operations
-  - **Package Management**: 7 package operations with auto-detection (apt/yum/dnf)
-  - **Network Tools**: 9 networking utilities for diagnostics and configuration
-- Real-time data display
-- Interactive prompts for user actions
-- No commands required - everything through menus
+The interface is organized into five main sections accessible from the menu:
+
+1. **System Information** - System details, service management, process monitoring, disk usage
+2. **User & Group Management** - User creation, deletion, group membership, password and shell management
+3. **Disk Management** - LVM, RAID, ZFS, partitioning, filesystem operations, mount management
+4. **Package Management** - Install, remove, search, and upgrade packages with auto-detection
+5. **Network Tools** - Connectivity testing, DNS operations, port scanning, firewall management
+
+Clean terminal-based menus with color coding, real-time data display, and interactive prompts guide you through every task—all without requiring a single command.
 
 ## Installation
 
-### One-Line Install ⚡
+### Requirements
+
+- **Bash 4.0+** (standard on all modern Linux systems)
+- **systemd** (for service management features)
+- No other dependencies—everything is built-in!
+
+### Quick Install
 
 ```bash
 curl -sSL https://raw.githubusercontent.com/tahasaifeee/lazyadmin/main/install.sh | sudo bash
 ```
 
-After installation, run from anywhere:
+Then run from anywhere:
 
 ```bash
 lazyadmin
 ```
 
-**Requirements:**
-- Bash 4.0+
-- systemd (for service management)
-- No external dependencies - pure bash!
-
-## Updating LazyAdmin
+### Update & Uninstall
 
 ```bash
+# Update to latest version
 curl -sSL https://raw.githubusercontent.com/tahasaifeee/lazyadmin/main/update.sh | sudo bash
-```
 
-## Uninstalling
-
-```bash
+# Uninstall
 sudo rm /usr/local/bin/lazyadmin
 ```
 
 ## Usage
 
+**Launch LazyAdmin:**
 ```bash
 lazyadmin
 ```
 
-**Navigation:**
-- **Just press the number key** (e.g., press `1`, `2`, `3`) - option executes instantly!
-- **No Enter key needed** - single keypress navigation
-- **Press `0`** to go back or exit current menu
-- Simple, clean terminal menus with color coding
+**Navigation Rules:**
+- **Press a number** (1, 2, 3, etc.) to select an option—it executes instantly
+- **Press 0** to go back or exit the current menu
+- **No Enter key needed**—everything responds to single keypresses
+- Color-coded menus help guide your selection
 
 ### Main Menu Structure
 
@@ -161,147 +124,62 @@ LazyAdmin Main Menu
 
 ## Features in Detail
 
-### System Information Panel
+### System Information & Monitoring
 
-Displays comprehensive system information:
-- Hostname, OS, Kernel version
-- System uptime and load average
-- CPU model, cores, architecture
-- Memory usage (total, used, free)
-- Network interfaces and IP addresses
+**System Info** displays hostname, OS, kernel version, uptime, load average, CPU model, cores, architecture, memory usage, and network interfaces with IP addresses.
 
-### Service Management
+**Service Management** gives you full systemd control—view services by status (running/stopped, enabled/disabled), start/stop/restart services, enable/disable boot startup, and check detailed service status in real-time.
 
-Full systemd service control:
-- View all services (running, stopped, enabled, disabled)
-- Start/stop/restart services
-- Enable/disable services for boot
-- View detailed service status
-- Real-time status updates
+**Process Monitoring** shows the top 20 memory-consuming processes with their owner, CPU, and memory usage percentages for quick resource assessment.
 
-### Process Monitoring
-
-View top 20 processes by memory usage:
-- Process name and owner
-- CPU and memory percentage
-- Quick overview of system resource usage
-
-### Disk Usage
-
-Monitor all disk partitions:
-- Filesystem and mount point
-- Total, used, and available space
-- Usage percentage
-- Support for all filesystem types
+**Disk Usage** monitors all partitions with filesystem info, mount points, total/used/available space, and usage percentages across all filesystem types.
 
 ### User & Group Management
 
-Complete user administration:
-- List all users (UID >= 1000) and groups
-- Create new users with home directories
-- Delete users (with option to remove home)
-- Manage group memberships
-- Set and reset passwords
-- Change user shells (bash, zsh, sh, fish, custom)
-- Lock/unlock user accounts
+Create and delete users with home directories, manage group memberships, set/reset passwords, change shells (bash, zsh, sh, fish, or custom), and lock/unlock accounts. View all users and groups with UID filtering for easy identification.
 
 ### Disk Management
 
-Comprehensive disk and storage management:
+**LVM** - Create and manage Physical Volumes, Volume Groups, and Logical Volumes; extend volumes and resize filesystems safely.
 
-**LVM (Logical Volume Management):**
-- View Physical Volumes, Volume Groups, Logical Volumes
-- Create PV, VG, LV with guided prompts
-- Extend logical volumes and resize filesystems
-- Remove LVs and VGs safely
+**RAID** - Create RAID 0/1/5/6/10 arrays with mdadm; add/remove disks, assemble, stop, and check array status.
 
-**RAID Management (mdadm):**
-- View RAID arrays and status
-- Create RAID 0, 1, 5, 6, 10 arrays
-- Add/remove disks from arrays
-- Stop, assemble, and check RAID status
+**ZFS** - Create and manage pools, datasets, and snapshots; rollback to previous states and view pool status.
 
-**ZFS Management:**
-- Create and manage ZFS pools
-- Create datasets and snapshots
-- Rollback to snapshots
-- View pool status
+**Partitioning** - Interactive fdisk and parted support with partition and block device listing.
 
-**Disk Partitioning:**
-- Interactive fdisk and parted support
-- List partitions and block devices
-- Safe partition table editing
+**Filesystems** - Create ext4/ext3/xfs/btrfs/vfat/ntfs filesystems; check/repair with fsck; resize with resize2fs/xfs_growfs; tune parameters and set labels.
 
-**Filesystem Operations:**
-- Create filesystems (ext4, ext3, xfs, btrfs, vfat, ntfs)
-- Check and repair filesystems (fsck)
-- Resize filesystems (resize2fs, xfs_growfs)
-- Tune filesystem parameters
-- Set filesystem labels
-
-**Mount/Unmount Operations:**
-- View mounted filesystems
-- Mount/unmount with guided prompts
-- Auto-create mount points
-- Edit and view /etc/fstab safely
+**Mount/Unmount** - View mounted filesystems, mount/unmount with guided prompts, auto-create mount points, and safely edit /etc/fstab.
 
 ### Network Tools
 
-Complete networking diagnostic and configuration toolkit:
+**Connectivity** - Ping (customizable packet count), traceroute for path analysis, and port testing via nc/telnet/bash.
 
-**Connectivity Testing:**
-- Ping with customizable packet count for connectivity testing
-- Traceroute for network path analysis and troubleshooting
-- Test specific ports using nc/telnet/bash TCP features
+**DNS** - Lookup via dig/nslookup/host; flush cache (auto-detects systemd-resolved, dnsmasq, or nscd).
 
-**DNS Operations:**
-- DNS lookup using dig, nslookup, or host commands
-- Flush DNS cache (auto-detects systemd-resolved, dnsmasq, or nscd)
-- DHCP renewal when applicable
+**Ports** - View listening ports with ss or netstat; test specific port connectivity with timeouts.
 
-**Port and Network Information:**
-- View all open/listening ports using ss or netstat
-- Display active connections and services
-- Test specific port connectivity with timeout
+**Services** - Restart NetworkManager, systemd-networkd, or legacy networking services with status checking.
 
-**Network Services:**
-- Restart NetworkManager, systemd-networkd, or legacy networking services
-- Support for various network service implementations across distributions
-- Service status checking before restart
+**Firewall** - View rules from nftables, iptables (filter/NAT), firewalld, or ufw.
 
-**Firewall Management:**
-- View firewall rules from nftables, iptables, firewalld, or ufw
-- Display both filter and NAT tables for iptables
-- Comprehensive ruleset display
-
-**Performance Testing:**
-- Network speed test using speedtest-cli
-- Optional installation of speedtest-cli if not present
-- Download and upload speed measurements
+**Speed Test** - Network speed testing with speedtest-cli (optional installation if not present).
 
 ## Why LazyAdmin?
 
-Managing Linux systems requires remembering numerous commands and their options. LazyAdmin provides:
+Managing Linux systems typically requires memorizing dozens of commands and their options. LazyAdmin eliminates that friction:
 
-1. **No Learning Curve**: Menu-driven interface, no need to remember commands
-2. **Fast & Responsive**: Pure bash with instant startup
-3. **Lightweight**: Zero dependencies, runs anywhere with Bash 4.0+
-4. **Complete Control**: All essential system administration tasks in one place
-5. **Safe Operations**: Interactive prompts before destructive actions
-6. **Universal**: Works on any Linux distribution with Bash 4.0+
-
-## Performance Benefits
-
-**Compared to the previous Go version:**
-- ✅ **Instant Startup**: No compilation or runtime overhead
-- ✅ **Lower Memory Usage**: Pure bash uses minimal resources
-- ✅ **Smaller Footprint**: Single bash script vs compiled binary
-- ✅ **No Build Dependencies**: No need for Go toolchain
-- ✅ **Zero External Dependencies**: No dialog, whiptail, or other tools required
+- **No Learning Curve** - Menu-driven interface with no commands to memorize
+- **Fast & Responsive** - Pure Bash with instant startup and no runtime overhead
+- **Lightweight & Portable** - Single script with zero dependencies; works anywhere Bash 4.0+ runs
+- **Complete Control** - All essential system admin tasks accessible from one interface
+- **Safe by Default** - Interactive prompts protect against accidental destructive actions
+- **Universal** - Works across all Linux distributions without additional setup
 
 ## Contributing
 
-Contributions are welcome! Feel free to submit issues or pull requests.
+Found a bug or have a feature request? Contributions are welcome! Submit issues or pull requests on GitHub.
 
 ## License
 
@@ -309,6 +187,6 @@ See the LICENSE file for details.
 
 ## Acknowledgments
 
-- Inspired by [Lazygit](https://github.com/jesseduffield/lazygit)
-- Built with pure Bash - no external dependencies
-- Designed for system administrators who value simplicity and speed
+- Inspired by [Lazygit](https://github.com/jesseduffield/lazygit) for its elegant, keyboard-driven interface
+- Built entirely in pure Bash with zero external dependencies
+- Designed for system administrators who prioritize simplicity, speed, and productivity
