@@ -44,6 +44,15 @@ A fast and lightweight terminal UI (TUI) for Linux system administration, built 
   - Create directories with permission control
   - Delete directories with safety confirmations
   - Rename directories
+- **Firewall & Security**: Comprehensive security management
+  - Enable/disable firewall (ufw/firewalld)
+  - Add and remove firewall rules
+  - Fail2ban status and management
+  - SSH hardening (port change, disable root login)
+  - View authentication logs
+  - Brute force detection and scanning
+  - Active connections monitoring
+  - Malware and rootkit scanning
 - **Disk Management (LVM, RAID, ZFS)**: Complete storage administration
   - **LVM**: Create/manage Physical Volumes, Volume Groups, Logical Volumes
   - **RAID**: Configure and manage mdadm RAID arrays (0, 1, 5, 6, 10)
@@ -61,13 +70,14 @@ A fast and lightweight terminal UI (TUI) for Linux system administration, built 
 The interface features:
 - Clean terminal-based menus with color coding
 - Single-keypress navigation (no Enter needed!)
-- Six main sections:
+- Seven main sections:
   - **System Information**: System Info, Services, Processes, Disk Usage
   - **User & Group Management**: 8 different user/group operations
   - **Disk Management**: LVM, RAID, ZFS, Partitioning, Filesystems, Mount operations
   - **Package Management**: 7 package operations with intelligent search
   - **Network Tools**: 10 networking utilities including virtual interfaces and bonding
   - **File Management**: 5 directory operations for easy filesystem navigation
+  - **Firewall & Security**: 9 security tools for system protection
 - Real-time data display
 - Interactive prompts for user actions
 - No commands required - everything through menus
@@ -171,6 +181,17 @@ LazyAdmin Main Menu
 │   ├── [3] Create Directory         - Create directories with permission control
 │   ├── [4] Delete Directory         - Remove directories with safety checks
 │   └── [5] Rename Directory         - Rename existing directories
+│
+├── [7] Firewall & Security
+│   ├── [1] Enable/Disable Firewall  - Toggle firewall status
+│   ├── [2] Add Firewall Rule        - Create new firewall rule
+│   ├── [3] Remove Firewall Rule     - Delete existing rule
+│   ├── [4] Fail2ban Status          - View and manage fail2ban
+│   ├── [5] SSH Hardening            - Quick security configurations
+│   ├── [6] View Auth Logs           - Check authentication logs
+│   ├── [7] Brute Force Scan         - Detect attack attempts
+│   ├── [8] Active Connections       - Monitor network connections
+│   └── [9] Malware Scan             - Rootkit and malware detection
 │
 └── [0] Exit
 ```
@@ -327,6 +348,66 @@ Easy and intuitive directory navigation and management:
 - Non-empty directories require typing 'DELETE' to confirm
 - Rename directories with path validation
 - Real-time feedback and error handling
+
+### Firewall & Security
+
+Comprehensive security management and system hardening:
+
+**Firewall Management:**
+- Enable/disable firewall with support for ufw, firewalld, and iptables
+- Add firewall rules with port, protocol (TCP/UDP), and action (allow/deny) configuration
+- Remove firewall rules with numbered selection (ufw) or port specification (firewalld)
+- View current firewall status and rules
+- Reload firewall configurations
+
+**Fail2ban Integration:**
+- Check fail2ban service status and jail configurations
+- View currently banned IPs and total ban counts per jail
+- Unban specific IP addresses from jails
+- Install and configure fail2ban if not present
+- Monitor SSH, Apache, and other service protections
+
+**SSH Hardening:**
+- Change SSH port from default 22 to custom port (1024-65535)
+- Disable root login for enhanced security
+- Disable password authentication (enforce key-only access)
+- Add idle timeout to disconnect inactive sessions
+- Apply all hardening measures at once
+- Automatic configuration backup before changes
+- Configuration validation before service restart
+
+**Authentication Monitoring:**
+- View recent failed login attempts
+- Monitor successful SSH logins (password and key-based)
+- Track all SSH connection attempts
+- Review sudo command history
+- Display last 50 authentication events
+- Support for both /var/log/auth.log and /var/log/secure
+
+**Brute Force Detection:**
+- Analyze failed SSH login attempts by IP address
+- Identify high-risk IPs with multiple failed attempts
+- Detect distributed brute force attacks
+- Display statistics (total attempts, unique IPs)
+- Show top failed usernames targeted
+- Provide security recommendations
+
+**Connection Monitoring:**
+- View all active network connections
+- Filter established connections only
+- Display listening ports and services
+- Monitor SSH connections specifically
+- Show connections grouped by IP address
+- Support for both ss and netstat commands
+
+**Malware & Rootkit Scanning:**
+- Quick rootkit scan with chkrootkit
+- Comprehensive scan with rkhunter (with automatic updates)
+- Check for suspicious files modified in last 24 hours
+- Detect SUID/SGID files that could be exploited
+- List running processes and check for hidden processes
+- Auto-install scanning tools if not present
+- Display scan results with warnings and recommendations
 
 ### Package Management
 
