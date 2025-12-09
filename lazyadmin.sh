@@ -54,6 +54,7 @@ main_menu() {
         echo -e "  ${BRIGHT_GREEN}[4]${NC} ${WHITE}Package Management${NC}"
         echo -e "  ${BRIGHT_GREEN}[5]${NC} ${WHITE}Network Tools${NC}"
         echo -e "  ${BRIGHT_GREEN}[6]${NC} ${WHITE}File Management${NC}"
+        echo -e "  ${BRIGHT_GREEN}[7]${NC} ${WHITE}Firewall & Security${NC}"
         echo ""
         echo -e "  ${BRIGHT_RED}[0]${NC} ${WHITE}Exit${NC}"
         echo ""
@@ -71,6 +72,7 @@ main_menu() {
             4) package_management_menu ;;
             5) network_tools_menu ;;
             6) file_management_menu ;;
+            7) firewall_security_menu ;;
             0) clear; exit 0 ;;
         esac
     done
@@ -5331,6 +5333,986 @@ rename_directory() {
         echo ""
         echo -e "${YELLOW}Cancelled${NC}"
     fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+#=============================================================================
+# FIREWALL & SECURITY MENU
+#=============================================================================
+
+# Firewall & Security menu
+firewall_security_menu() {
+    while true; do
+        show_header
+        echo -e "${BRIGHT_CYAN}╭─────────────────────────────────────────────────────────────╮${NC}"
+        echo -e "${BRIGHT_CYAN}│${NC}  ${WHITE}${BOLD}FIREWALL & SECURITY${NC}                                     ${BRIGHT_CYAN}│${NC}"
+        echo -e "${BRIGHT_CYAN}╰─────────────────────────────────────────────────────────────╯${NC}"
+        echo ""
+        echo -e "  ${BRIGHT_GREEN}[1]${NC} ${WHITE}Enable/Disable Firewall${NC}   ${DIM}- Toggle firewall status${NC}"
+        echo -e "  ${BRIGHT_GREEN}[2]${NC} ${WHITE}Add Firewall Rule${NC}         ${DIM}- Create new rule${NC}"
+        echo -e "  ${BRIGHT_GREEN}[3]${NC} ${WHITE}Remove Firewall Rule${NC}      ${DIM}- Delete existing rule${NC}"
+        echo -e "  ${BRIGHT_GREEN}[4]${NC} ${WHITE}Fail2ban Status${NC}           ${DIM}- View fail2ban info${NC}"
+        echo -e "  ${BRIGHT_GREEN}[5]${NC} ${WHITE}SSH Hardening${NC}             ${DIM}- Quick security apply${NC}"
+        echo -e "  ${BRIGHT_GREEN}[6]${NC} ${WHITE}View Auth Logs${NC}            ${DIM}- Check authentication${NC}"
+        echo -e "  ${BRIGHT_GREEN}[7]${NC} ${WHITE}Brute Force Scan${NC}          ${DIM}- Detect attacks${NC}"
+        echo -e "  ${BRIGHT_GREEN}[8]${NC} ${WHITE}Active Connections${NC}        ${DIM}- Monitor connections${NC}"
+        echo -e "  ${BRIGHT_GREEN}[9]${NC} ${WHITE}Malware Scan${NC}              ${DIM}- Check for rootkits${NC}"
+        echo ""
+        echo -e "  ${BRIGHT_RED}[0]${NC} ${WHITE}Back to Main Menu${NC}"
+        echo ""
+        echo -e "${DIM}${BRIGHT_CYAN}───────────────────────────────────────────────────────────────${NC}"
+        echo -e "Press a number key: "
+
+        read -n 1 -s choice
+        echo ""
+
+        case $choice in
+            1) enable_disable_firewall ;;
+            2) add_firewall_rule ;;
+            3) remove_firewall_rule ;;
+            4) fail2ban_status ;;
+            5) ssh_hardening ;;
+            6) view_auth_logs ;;
+            7) brute_force_scan ;;
+            8) check_active_connections ;;
+            9) malware_scan ;;
+            0) return ;;
+        esac
+    done
+}
+
+# Enable/Disable Firewall
+enable_disable_firewall() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${WHITE}${BOLD}ENABLE/DISABLE FIREWALL${NC}                                   ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # Detect firewall system
+    local firewall_type="none"
+
+    if command -v ufw &>/dev/null; then
+        firewall_type="ufw"
+        echo -e "${BRIGHT_CYAN}Detected firewall:${NC} ${WHITE}UFW (Uncomplicated Firewall)${NC}"
+    elif command -v firewall-cmd &>/dev/null; then
+        firewall_type="firewalld"
+        echo -e "${BRIGHT_CYAN}Detected firewall:${NC} ${WHITE}firewalld${NC}"
+    elif command -v iptables &>/dev/null; then
+        firewall_type="iptables"
+        echo -e "${BRIGHT_CYAN}Detected firewall:${NC} ${WHITE}iptables${NC}"
+    else
+        echo -e "${RED}No supported firewall found${NC}"
+        echo -e "${YELLOW}Install: sudo apt install ufw  OR  sudo dnf install firewalld${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo ""
+
+    # Show current status
+    case $firewall_type in
+        ufw)
+            echo -e "${BRIGHT_YELLOW}Current status:${NC}"
+            sudo ufw status verbose
+            echo ""
+            echo -e "${BRIGHT_CYAN}Options:${NC}"
+            echo -e "  ${BRIGHT_GREEN}[1]${NC} Enable firewall"
+            echo -e "  ${BRIGHT_GREEN}[2]${NC} Disable firewall"
+            echo -e "  ${BRIGHT_GREEN}[3]${NC} Reload firewall"
+            echo ""
+            read -p "Enter choice (0 to cancel): " fw_choice
+
+            case $fw_choice in
+                1)
+                    sudo ufw --force enable
+                    if [ $? -eq 0 ]; then
+                        echo ""
+                        echo -e "${BRIGHT_GREEN}✓ Firewall enabled${NC}"
+                    fi
+                    ;;
+                2)
+                    sudo ufw disable
+                    if [ $? -eq 0 ]; then
+                        echo ""
+                        echo -e "${BRIGHT_YELLOW}⚠ Firewall disabled${NC}"
+                    fi
+                    ;;
+                3)
+                    sudo ufw reload
+                    if [ $? -eq 0 ]; then
+                        echo ""
+                        echo -e "${BRIGHT_GREEN}✓ Firewall reloaded${NC}"
+                    fi
+                    ;;
+            esac
+            ;;
+        firewalld)
+            echo -e "${BRIGHT_YELLOW}Current status:${NC}"
+            sudo firewall-cmd --state 2>/dev/null && sudo firewall-cmd --list-all
+            echo ""
+            echo -e "${BRIGHT_CYAN}Options:${NC}"
+            echo -e "  ${BRIGHT_GREEN}[1]${NC} Enable firewall"
+            echo -e "  ${BRIGHT_GREEN}[2]${NC} Disable firewall"
+            echo -e "  ${BRIGHT_GREEN}[3]${NC} Reload firewall"
+            echo ""
+            read -p "Enter choice (0 to cancel): " fw_choice
+
+            case $fw_choice in
+                1)
+                    sudo systemctl start firewalld && sudo systemctl enable firewalld
+                    if [ $? -eq 0 ]; then
+                        echo ""
+                        echo -e "${BRIGHT_GREEN}✓ Firewall enabled${NC}"
+                    fi
+                    ;;
+                2)
+                    sudo systemctl stop firewalld && sudo systemctl disable firewalld
+                    if [ $? -eq 0 ]; then
+                        echo ""
+                        echo -e "${BRIGHT_YELLOW}⚠ Firewall disabled${NC}"
+                    fi
+                    ;;
+                3)
+                    sudo firewall-cmd --reload
+                    if [ $? -eq 0 ]; then
+                        echo ""
+                        echo -e "${BRIGHT_GREEN}✓ Firewall reloaded${NC}"
+                    fi
+                    ;;
+            esac
+            ;;
+        iptables)
+            echo -e "${BRIGHT_YELLOW}Current iptables rules:${NC}"
+            sudo iptables -L -n -v | head -20
+            echo ""
+            echo -e "${YELLOW}Note: iptables requires manual rule management${NC}"
+            echo -e "${YELLOW}Consider installing ufw or firewalld for easier management${NC}"
+            ;;
+    esac
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Add Firewall Rule
+add_firewall_rule() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${WHITE}${BOLD}ADD FIREWALL RULE${NC}                                         ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # Detect firewall
+    local firewall_type="none"
+
+    if command -v ufw &>/dev/null && sudo ufw status | grep -q "Status: active"; then
+        firewall_type="ufw"
+    elif command -v firewall-cmd &>/dev/null && sudo firewall-cmd --state &>/dev/null; then
+        firewall_type="firewalld"
+    else
+        echo -e "${RED}No active firewall found${NC}"
+        echo -e "${YELLOW}Please enable ufw or firewalld first${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_CYAN}Firewall: ${WHITE}$firewall_type${NC}"
+    echo ""
+    echo -e "${BRIGHT_CYAN}Common ports:${NC}"
+    echo -e "  22  - SSH"
+    echo -e "  80  - HTTP"
+    echo -e "  443 - HTTPS"
+    echo -e "  3306 - MySQL"
+    echo -e "  5432 - PostgreSQL"
+    echo ""
+
+    read -p "Enter port number: " port
+
+    if [ -z "$port" ]; then
+        echo -e "${RED}Port cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo ""
+    echo -e "${BRIGHT_CYAN}Protocol:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} TCP"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} UDP"
+    echo -e "  ${BRIGHT_GREEN}[3]${NC} Both"
+    echo ""
+    read -p "Enter choice: " proto_choice
+
+    local protocol="tcp"
+    case $proto_choice in
+        2) protocol="udp" ;;
+        3) protocol="both" ;;
+        *) protocol="tcp" ;;
+    esac
+
+    echo ""
+    echo -e "${BRIGHT_CYAN}Action:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} Allow"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} Deny"
+    echo ""
+    read -p "Enter choice: " action_choice
+
+    local action="allow"
+    [ "$action_choice" = "2" ] && action="deny"
+
+    echo ""
+
+    case $firewall_type in
+        ufw)
+            if [ "$protocol" = "both" ]; then
+                sudo ufw $action $port
+            else
+                sudo ufw $action $port/$protocol
+            fi
+
+            if [ $? -eq 0 ]; then
+                echo -e "${BRIGHT_GREEN}✓ Rule added successfully${NC}"
+                echo ""
+                echo -e "${BRIGHT_CYAN}Current rules:${NC}"
+                sudo ufw status numbered | head -20
+            else
+                echo -e "${BRIGHT_RED}✗ Failed to add rule${NC}"
+            fi
+            ;;
+        firewalld)
+            if [ "$protocol" = "both" ]; then
+                sudo firewall-cmd --permanent --add-port=$port/tcp
+                sudo firewall-cmd --permanent --add-port=$port/udp
+            else
+                if [ "$action" = "allow" ]; then
+                    sudo firewall-cmd --permanent --add-port=$port/$protocol
+                else
+                    sudo firewall-cmd --permanent --remove-port=$port/$protocol
+                fi
+            fi
+
+            sudo firewall-cmd --reload
+
+            if [ $? -eq 0 ]; then
+                echo -e "${BRIGHT_GREEN}✓ Rule added successfully${NC}"
+                echo ""
+                echo -e "${BRIGHT_CYAN}Current rules:${NC}"
+                sudo firewall-cmd --list-all
+            else
+                echo -e "${BRIGHT_RED}✗ Failed to add rule${NC}"
+            fi
+            ;;
+    esac
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Remove Firewall Rule
+remove_firewall_rule() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${WHITE}${BOLD}REMOVE FIREWALL RULE${NC}                                      ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # Detect firewall
+    local firewall_type="none"
+
+    if command -v ufw &>/dev/null && sudo ufw status | grep -q "Status: active"; then
+        firewall_type="ufw"
+    elif command -v firewall-cmd &>/dev/null && sudo firewall-cmd --state &>/dev/null; then
+        firewall_type="firewalld"
+    else
+        echo -e "${RED}No active firewall found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    case $firewall_type in
+        ufw)
+            echo -e "${BRIGHT_YELLOW}Current firewall rules:${NC}"
+            echo ""
+            sudo ufw status numbered
+            echo ""
+            read -p "Enter rule number to delete (0 to cancel): " rule_num
+
+            if [ -n "$rule_num" ] && [ "$rule_num" != "0" ]; then
+                echo ""
+                echo -e "${BRIGHT_RED}⚠ Delete rule #$rule_num?${NC}"
+                read -p "Confirm (y/n): " -n 1 confirm
+                echo ""
+
+                if [[ $confirm =~ ^[Yy]$ ]]; then
+                    echo "$rule_num" | sudo ufw delete
+                    if [ $? -eq 0 ]; then
+                        echo ""
+                        echo -e "${BRIGHT_GREEN}✓ Rule deleted${NC}"
+                    else
+                        echo ""
+                        echo -e "${BRIGHT_RED}✗ Failed to delete rule${NC}"
+                    fi
+                fi
+            fi
+            ;;
+        firewalld)
+            echo -e "${BRIGHT_YELLOW}Current firewall rules:${NC}"
+            echo ""
+            sudo firewall-cmd --list-all
+            echo ""
+            read -p "Enter port to remove (e.g., 8080/tcp): " port_proto
+
+            if [ -n "$port_proto" ]; then
+                echo ""
+                sudo firewall-cmd --permanent --remove-port=$port_proto
+                sudo firewall-cmd --reload
+
+                if [ $? -eq 0 ]; then
+                    echo -e "${BRIGHT_GREEN}✓ Rule removed${NC}"
+                else
+                    echo -e "${BRIGHT_RED}✗ Failed to remove rule${NC}"
+                fi
+            fi
+            ;;
+    esac
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Fail2ban Status
+fail2ban_status() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${WHITE}${BOLD}FAIL2BAN STATUS${NC}                                           ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    if ! command -v fail2ban-client &>/dev/null; then
+        echo -e "${YELLOW}Fail2ban is not installed${NC}"
+        echo ""
+        echo -e "${BRIGHT_CYAN}Install fail2ban:${NC}"
+        echo -e "  ${WHITE}Debian/Ubuntu:${NC} sudo apt install fail2ban"
+        echo -e "  ${WHITE}RHEL/CentOS:${NC}   sudo dnf install fail2ban"
+        echo ""
+        read -p "Install fail2ban now? (y/n): " -n 1 install_f2b
+        echo ""
+
+        if [[ $install_f2b =~ ^[Yy]$ ]]; then
+            PKG_MGR=$(detect_package_manager)
+            case $PKG_MGR in
+                apt)
+                    sudo apt install -y fail2ban
+                    sudo systemctl enable fail2ban
+                    sudo systemctl start fail2ban
+                    ;;
+                dnf|yum)
+                    sudo $PKG_MGR install -y fail2ban
+                    sudo systemctl enable fail2ban
+                    sudo systemctl start fail2ban
+                    ;;
+            esac
+        fi
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Check if fail2ban is running
+    if ! systemctl is-active --quiet fail2ban; then
+        echo -e "${YELLOW}Fail2ban service is not running${NC}"
+        echo ""
+        read -p "Start fail2ban? (y/n): " -n 1 start_f2b
+        echo ""
+
+        if [[ $start_f2b =~ ^[Yy]$ ]]; then
+            sudo systemctl start fail2ban
+            echo -e "${BRIGHT_GREEN}✓ Fail2ban started${NC}"
+        fi
+        echo ""
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_CYAN}Service status:${NC} ${BRIGHT_GREEN}Active${NC}"
+    echo ""
+    echo -e "${BRIGHT_YELLOW}┌─ Jail Status ────────────────────────────────────────────────┐${NC}"
+    echo ""
+
+    # List jails
+    local jails=$(sudo fail2ban-client status | grep "Jail list" | sed 's/.*://;s/,//g')
+
+    if [ -z "$jails" ]; then
+        echo -e "${YELLOW}No jails configured${NC}"
+    else
+        for jail in $jails; do
+            echo -e "${BRIGHT_CYAN}Jail: ${WHITE}$jail${NC}"
+            sudo fail2ban-client status $jail | grep -E "Currently banned|Total banned"
+            echo ""
+        done
+    fi
+
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+    echo -e "${BRIGHT_CYAN}Options:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} View detailed jail status"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} Unban an IP address"
+    echo ""
+    read -p "Enter choice (0 to skip): " f2b_choice
+
+    case $f2b_choice in
+        1)
+            echo ""
+            read -p "Enter jail name: " jail_name
+            if [ -n "$jail_name" ]; then
+                echo ""
+                sudo fail2ban-client status $jail_name
+            fi
+            ;;
+        2)
+            echo ""
+            read -p "Enter IP to unban: " ip_unban
+            read -p "Enter jail name: " jail_name
+            if [ -n "$ip_unban" ] && [ -n "$jail_name" ]; then
+                sudo fail2ban-client set $jail_name unbanip $ip_unban
+                echo -e "${BRIGHT_GREEN}✓ IP unbanned${NC}"
+            fi
+            ;;
+    esac
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# SSH Hardening
+ssh_hardening() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${WHITE}${BOLD}SSH HARDENING${NC}                                             ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    local sshd_config="/etc/ssh/sshd_config"
+
+    if [ ! -f "$sshd_config" ]; then
+        echo -e "${RED}SSH configuration file not found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_RED}⚠  WARNING: This will modify SSH configuration${NC}"
+    echo -e "${YELLOW}Make sure you have console access before proceeding!${NC}"
+    echo ""
+    echo -e "${BRIGHT_CYAN}Current SSH configuration:${NC}"
+    echo ""
+
+    local current_port=$(grep "^Port " $sshd_config | awk '{print $2}')
+    local root_login=$(grep "^PermitRootLogin" $sshd_config | awk '{print $2}')
+    local password_auth=$(grep "^PasswordAuthentication" $sshd_config | awk '{print $2}')
+
+    [ -z "$current_port" ] && current_port="22 (default)"
+    [ -z "$root_login" ] && root_login="not set"
+    [ -z "$password_auth" ] && password_auth="not set"
+
+    echo -e "  Port: ${WHITE}$current_port${NC}"
+    echo -e "  Root Login: ${WHITE}$root_login${NC}"
+    echo -e "  Password Auth: ${WHITE}$password_auth${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_CYAN}Hardening options:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} Change SSH port"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} Disable root login"
+    echo -e "  ${BRIGHT_GREEN}[3]${NC} Disable password authentication (key-only)"
+    echo -e "  ${BRIGHT_GREEN}[4]${NC} Apply all hardening measures"
+    echo -e "  ${BRIGHT_GREEN}[5]${NC} Add idle timeout"
+    echo ""
+    read -p "Enter choice (0 to cancel): " ssh_choice
+
+    local changes_made=false
+    local backup_created=false
+
+    case $ssh_choice in
+        1)
+            echo ""
+            read -p "Enter new SSH port (1024-65535): " new_port
+
+            if [[ "$new_port" =~ ^[0-9]+$ ]] && [ "$new_port" -ge 1024 ] && [ "$new_port" -le 65535 ]; then
+                sudo cp $sshd_config ${sshd_config}.backup
+                backup_created=true
+
+                if grep -q "^Port " $sshd_config; then
+                    sudo sed -i "s/^Port .*/Port $new_port/" $sshd_config
+                else
+                    echo "Port $new_port" | sudo tee -a $sshd_config > /dev/null
+                fi
+
+                echo -e "${BRIGHT_GREEN}✓ SSH port changed to $new_port${NC}"
+                echo -e "${YELLOW}Remember to update firewall rules!${NC}"
+                changes_made=true
+            else
+                echo -e "${RED}Invalid port number${NC}"
+            fi
+            ;;
+        2)
+            sudo cp $sshd_config ${sshd_config}.backup
+            backup_created=true
+
+            if grep -q "^PermitRootLogin" $sshd_config; then
+                sudo sed -i "s/^PermitRootLogin.*/PermitRootLogin no/" $sshd_config
+            else
+                echo "PermitRootLogin no" | sudo tee -a $sshd_config > /dev/null
+            fi
+
+            echo -e "${BRIGHT_GREEN}✓ Root login disabled${NC}"
+            changes_made=true
+            ;;
+        3)
+            echo ""
+            echo -e "${BRIGHT_RED}⚠ WARNING: Ensure you have SSH key access before disabling passwords!${NC}"
+            read -p "Continue? (y/n): " -n 1 confirm
+            echo ""
+
+            if [[ $confirm =~ ^[Yy]$ ]]; then
+                sudo cp $sshd_config ${sshd_config}.backup
+                backup_created=true
+
+                if grep -q "^PasswordAuthentication" $sshd_config; then
+                    sudo sed -i "s/^PasswordAuthentication.*/PasswordAuthentication no/" $sshd_config
+                else
+                    echo "PasswordAuthentication no" | sudo tee -a $sshd_config > /dev/null
+                fi
+
+                echo -e "${BRIGHT_GREEN}✓ Password authentication disabled${NC}"
+                changes_made=true
+            fi
+            ;;
+        4)
+            echo ""
+            echo -e "${BRIGHT_RED}⚠ WARNING: This will apply all hardening measures!${NC}"
+            read -p "Continue? (y/n): " -n 1 confirm
+            echo ""
+
+            if [[ $confirm =~ ^[Yy]$ ]]; then
+                sudo cp $sshd_config ${sshd_config}.backup
+                backup_created=true
+
+                read -p "Enter new SSH port (or press Enter for 2222): " new_port
+                new_port=${new_port:-2222}
+
+                # Apply all hardening
+                sudo sed -i "s/^#\?Port .*/Port $new_port/" $sshd_config
+                sudo sed -i "s/^#\?PermitRootLogin.*/PermitRootLogin no/" $sshd_config
+                sudo sed -i "s/^#\?PasswordAuthentication.*/PasswordAuthentication no/" $sshd_config
+                sudo sed -i "s/^#\?PermitEmptyPasswords.*/PermitEmptyPasswords no/" $sshd_config
+                sudo sed -i "s/^#\?X11Forwarding.*/X11Forwarding no/" $sshd_config
+
+                echo -e "${BRIGHT_GREEN}✓ All hardening measures applied${NC}"
+                echo -e "${YELLOW}New SSH port: $new_port${NC}"
+                changes_made=true
+            fi
+            ;;
+        5)
+            sudo cp $sshd_config ${sshd_config}.backup
+            backup_created=true
+
+            if grep -q "^ClientAliveInterval" $sshd_config; then
+                sudo sed -i "s/^ClientAliveInterval.*/ClientAliveInterval 300/" $sshd_config
+            else
+                echo "ClientAliveInterval 300" | sudo tee -a $sshd_config > /dev/null
+            fi
+
+            if grep -q "^ClientAliveCountMax" $sshd_config; then
+                sudo sed -i "s/^ClientAliveCountMax.*/ClientAliveCountMax 2/" $sshd_config
+            else
+                echo "ClientAliveCountMax 2" | sudo tee -a $sshd_config > /dev/null
+            fi
+
+            echo -e "${BRIGHT_GREEN}✓ Idle timeout set to 10 minutes${NC}"
+            changes_made=true
+            ;;
+    esac
+
+    if [ "$changes_made" = true ]; then
+        echo ""
+        [ "$backup_created" = true ] && echo -e "${BRIGHT_CYAN}Backup:${NC} ${sshd_config}.backup"
+        echo ""
+        read -p "Restart SSH service to apply changes? (y/n): " -n 1 restart_ssh
+        echo ""
+
+        if [[ $restart_ssh =~ ^[Yy]$ ]]; then
+            echo ""
+            echo -e "${BRIGHT_CYAN}Testing configuration...${NC}"
+            if sudo sshd -t; then
+                echo -e "${BRIGHT_GREEN}✓ Configuration is valid${NC}"
+                sudo systemctl restart sshd
+                echo -e "${BRIGHT_GREEN}✓ SSH service restarted${NC}"
+            else
+                echo -e "${BRIGHT_RED}✗ Configuration has errors${NC}"
+                echo -e "${YELLOW}Restoring backup...${NC}"
+                sudo cp ${sshd_config}.backup $sshd_config
+            fi
+        fi
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# View Authentication Logs
+view_auth_logs() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${WHITE}${BOLD}AUTHENTICATION LOGS${NC}                                       ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # Determine log file location
+    local auth_log=""
+    if [ -f "/var/log/auth.log" ]; then
+        auth_log="/var/log/auth.log"
+    elif [ -f "/var/log/secure" ]; then
+        auth_log="/var/log/secure"
+    else
+        echo -e "${RED}Authentication log file not found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_CYAN}Log file:${NC} ${WHITE}$auth_log${NC}"
+    echo ""
+    echo -e "${BRIGHT_CYAN}View options:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} Recent failed login attempts"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} Recent successful logins"
+    echo -e "  ${BRIGHT_GREEN}[3]${NC} All SSH connections"
+    echo -e "  ${BRIGHT_GREEN}[4]${NC} Sudo command history"
+    echo -e "  ${BRIGHT_GREEN}[5]${NC} Last 50 authentication events"
+    echo ""
+    read -p "Enter choice: " log_choice
+
+    echo ""
+    echo -e "${BRIGHT_YELLOW}┌─ Log Results ────────────────────────────────────────────────┐${NC}"
+    echo ""
+
+    case $log_choice in
+        1)
+            echo -e "${BRIGHT_CYAN}Failed login attempts:${NC}"
+            echo ""
+            sudo grep "Failed password" $auth_log | tail -30
+            ;;
+        2)
+            echo -e "${BRIGHT_CYAN}Successful logins:${NC}"
+            echo ""
+            sudo grep "Accepted password\|Accepted publickey" $auth_log | tail -30
+            ;;
+        3)
+            echo -e "${BRIGHT_CYAN}SSH connections:${NC}"
+            echo ""
+            sudo grep "sshd" $auth_log | tail -40
+            ;;
+        4)
+            echo -e "${BRIGHT_CYAN}Sudo commands:${NC}"
+            echo ""
+            sudo grep "sudo.*COMMAND" $auth_log | tail -30
+            ;;
+        5)
+            echo -e "${BRIGHT_CYAN}Recent authentication events:${NC}"
+            echo ""
+            sudo tail -50 $auth_log
+            ;;
+        *)
+            echo -e "${YELLOW}Invalid choice${NC}"
+            ;;
+    esac
+
+    echo ""
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Brute Force Detection Scan
+brute_force_scan() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${WHITE}${BOLD}BRUTE FORCE DETECTION${NC}                                     ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    # Determine log file
+    local auth_log=""
+    if [ -f "/var/log/auth.log" ]; then
+        auth_log="/var/log/auth.log"
+    elif [ -f "/var/log/secure" ]; then
+        auth_log="/var/log/secure"
+    else
+        echo -e "${RED}Authentication log file not found${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo -e "${BRIGHT_CYAN}Scanning for brute force attempts...${NC}"
+    echo ""
+
+    # Analyze failed login attempts
+    echo -e "${BRIGHT_YELLOW}┌─ Failed SSH Login Attempts by IP ───────────────────────────┐${NC}"
+    echo ""
+
+    sudo grep "Failed password" $auth_log | \
+        grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' | \
+        sort | uniq -c | sort -rn | head -20 | \
+        while read count ip; do
+            if [ "$count" -gt 10 ]; then
+                echo -e "  ${BRIGHT_RED}$count attempts${NC} from ${WHITE}$ip${NC} ${RED}[HIGH RISK]${NC}"
+            elif [ "$count" -gt 5 ]; then
+                echo -e "  ${YELLOW}$count attempts${NC} from ${WHITE}$ip${NC} ${YELLOW}[MEDIUM RISK]${NC}"
+            else
+                echo -e "  ${WHITE}$count attempts${NC} from ${WHITE}$ip${NC}"
+            fi
+        done
+
+    echo ""
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    # Check for distributed attacks
+    local unique_ips=$(sudo grep "Failed password" $auth_log | grep -oE '([0-9]{1,3}\.){3}[0-9]{1,3}' | sort -u | wc -l)
+    local total_attempts=$(sudo grep "Failed password" $auth_log | wc -l)
+
+    echo -e "${BRIGHT_CYAN}Statistics:${NC}"
+    echo -e "  Total failed attempts: ${WHITE}$total_attempts${NC}"
+    echo -e "  Unique IPs: ${WHITE}$unique_ips${NC}"
+
+    if [ "$unique_ips" -gt 20 ]; then
+        echo -e "  ${BRIGHT_RED}⚠ Possible distributed attack detected!${NC}"
+    fi
+
+    echo ""
+    echo -e "${BRIGHT_CYAN}Top failed usernames:${NC}"
+    sudo grep "Failed password" $auth_log | \
+        grep -oP 'for\s+\K[^\s]+' | \
+        sort | uniq -c | sort -rn | head -10
+
+    echo ""
+    echo -e "${BRIGHT_CYAN}Recommendations:${NC}"
+    echo -e "  1. Enable fail2ban to auto-ban attackers"
+    echo -e "  2. Use SSH key authentication instead of passwords"
+    echo -e "  3. Change SSH port from default 22"
+    echo -e "  4. Disable root login"
+    echo -e "  5. Use a VPN or IP whitelist for SSH access"
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Check Active Connections
+check_active_connections() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${WHITE}${BOLD}ACTIVE CONNECTIONS${NC}                                        ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_CYAN}Connection options:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} All active connections"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} Established connections only"
+    echo -e "  ${BRIGHT_GREEN}[3]${NC} Listening ports"
+    echo -e "  ${BRIGHT_GREEN}[4]${NC} SSH connections"
+    echo -e "  ${BRIGHT_GREEN}[5]${NC} Connections by IP (summary)"
+    echo ""
+    read -p "Enter choice: " conn_choice
+
+    echo ""
+    echo -e "${BRIGHT_YELLOW}┌─ Connection Results ─────────────────────────────────────────┐${NC}"
+    echo ""
+
+    case $conn_choice in
+        1)
+            echo -e "${BRIGHT_CYAN}All active connections:${NC}"
+            echo ""
+            if command -v ss &>/dev/null; then
+                sudo ss -tupn | head -50
+            else
+                sudo netstat -tupn | head -50
+            fi
+            ;;
+        2)
+            echo -e "${BRIGHT_CYAN}Established connections:${NC}"
+            echo ""
+            if command -v ss &>/dev/null; then
+                sudo ss -tupn state established
+            else
+                sudo netstat -tupn | grep ESTABLISHED
+            fi
+            ;;
+        3)
+            echo -e "${BRIGHT_CYAN}Listening ports:${NC}"
+            echo ""
+            if command -v ss &>/dev/null; then
+                sudo ss -tulpn | grep LISTEN
+            else
+                sudo netstat -tulpn | grep LISTEN
+            fi
+            ;;
+        4)
+            echo -e "${BRIGHT_CYAN}SSH connections:${NC}"
+            echo ""
+            if command -v ss &>/dev/null; then
+                sudo ss -tnp | grep ssh
+            else
+                sudo netstat -tnp | grep ssh
+            fi
+            echo ""
+            echo -e "${BRIGHT_CYAN}Who is logged in:${NC}"
+            who
+            ;;
+        5)
+            echo -e "${BRIGHT_CYAN}Connections by IP:${NC}"
+            echo ""
+            if command -v ss &>/dev/null; then
+                sudo ss -tn | grep ESTAB | awk '{print $5}' | cut -d: -f1 | sort | uniq -c | sort -rn
+            else
+                sudo netstat -tn | grep ESTABLISHED | awk '{print $5}' | cut -d: -f1 | sort | uniq -c | sort -rn
+            fi
+            ;;
+    esac
+
+    echo ""
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Malware Scan
+malware_scan() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${WHITE}${BOLD}MALWARE SCAN${NC}                                              ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_CYAN}Available scan tools:${NC}"
+    echo ""
+
+    local has_chkrootkit=false
+    local has_rkhunter=false
+    local has_clamav=false
+
+    if command -v chkrootkit &>/dev/null; then
+        echo -e "  ${BRIGHT_GREEN}✓${NC} chkrootkit installed"
+        has_chkrootkit=true
+    else
+        echo -e "  ${YELLOW}✗${NC} chkrootkit not installed"
+    fi
+
+    if command -v rkhunter &>/dev/null; then
+        echo -e "  ${BRIGHT_GREEN}✓${NC} rkhunter installed"
+        has_rkhunter=true
+    else
+        echo -e "  ${YELLOW}✗${NC} rkhunter not installed"
+    fi
+
+    if command -v clamscan &>/dev/null; then
+        echo -e "  ${BRIGHT_GREEN}✓${NC} ClamAV installed"
+        has_clamav=true
+    else
+        echo -e "  ${YELLOW}✗${NC} ClamAV not installed"
+    fi
+
+    echo ""
+
+    if [ "$has_chkrootkit" = false ] && [ "$has_rkhunter" = false ] && [ "$has_clamav" = false ]; then
+        echo -e "${YELLOW}No malware scanning tools installed${NC}"
+        echo ""
+        echo -e "${BRIGHT_CYAN}Install options:${NC}"
+        echo -e "  ${WHITE}Debian/Ubuntu:${NC}"
+        echo -e "    sudo apt install chkrootkit rkhunter clamav"
+        echo -e "  ${WHITE}RHEL/CentOS:${NC}"
+        echo -e "    sudo dnf install chkrootkit rkhunter clamav"
+        echo ""
+        read -p "Install chkrootkit and rkhunter? (y/n): " -n 1 install_tools
+        echo ""
+
+        if [[ $install_tools =~ ^[Yy]$ ]]; then
+            PKG_MGR=$(detect_package_manager)
+            case $PKG_MGR in
+                apt)
+                    sudo apt install -y chkrootkit rkhunter
+                    has_chkrootkit=true
+                    has_rkhunter=true
+                    ;;
+                dnf|yum)
+                    sudo $PKG_MGR install -y chkrootkit rkhunter
+                    has_chkrootkit=true
+                    has_rkhunter=true
+                    ;;
+            esac
+        else
+            read -p "Press Enter to continue..."
+            return
+        fi
+        echo ""
+    fi
+
+    echo -e "${BRIGHT_CYAN}Scan options:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} Quick rootkit scan (chkrootkit)"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} Full rootkit scan (rkhunter)"
+    echo -e "  ${BRIGHT_GREEN}[3]${NC} Check for suspicious files"
+    echo -e "  ${BRIGHT_GREEN}[4]${NC} List running processes"
+    echo ""
+    read -p "Enter choice (0 to cancel): " scan_choice
+
+    echo ""
+
+    case $scan_choice in
+        1)
+            if [ "$has_chkrootkit" = true ]; then
+                echo -e "${BRIGHT_CYAN}Running chkrootkit scan...${NC}"
+                echo ""
+                sudo chkrootkit | grep -v "not infected\|not found" | head -50
+                echo ""
+                echo -e "${BRIGHT_GREEN}✓ Scan complete${NC}"
+                echo -e "${YELLOW}Review output for any warnings or infections${NC}"
+            else
+                echo -e "${RED}chkrootkit not available${NC}"
+            fi
+            ;;
+        2)
+            if [ "$has_rkhunter" = true ]; then
+                echo -e "${BRIGHT_CYAN}Running rkhunter scan...${NC}"
+                echo -e "${YELLOW}This may take a few minutes...${NC}"
+                echo ""
+                sudo rkhunter --update
+                sudo rkhunter --check --skip-keypress --report-warnings-only
+                echo ""
+                echo -e "${BRIGHT_GREEN}✓ Scan complete${NC}"
+                echo -e "${BRIGHT_CYAN}Full log:${NC} /var/log/rkhunter.log"
+            else
+                echo -e "${RED}rkhunter not available${NC}"
+            fi
+            ;;
+        3)
+            echo -e "${BRIGHT_CYAN}Checking for suspicious files...${NC}"
+            echo ""
+            echo -e "${BRIGHT_YELLOW}Files modified in last 24 hours in system directories:${NC}"
+            sudo find /etc /usr/bin /usr/sbin -type f -mtime -1 2>/dev/null | head -20
+            echo ""
+            echo -e "${BRIGHT_YELLOW}SUID/SGID files:${NC}"
+            sudo find / -type f \( -perm -4000 -o -perm -2000 \) 2>/dev/null | head -20
+            ;;
+        4)
+            echo -e "${BRIGHT_CYAN}Running processes:${NC}"
+            echo ""
+            ps aux --sort=-%cpu | head -20
+            echo ""
+            echo -e "${BRIGHT_CYAN}Hidden processes check:${NC}"
+            if command -v unhide &>/dev/null; then
+                sudo unhide proc | head -20
+            else
+                echo -e "${YELLOW}Install 'unhide' for hidden process detection${NC}"
+            fi
+            ;;
+    esac
 
     echo ""
     read -p "Press Enter to continue..."
