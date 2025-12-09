@@ -53,6 +53,7 @@ main_menu() {
         echo -e "  ${BRIGHT_GREEN}[3]${NC} ${WHITE}Disk Management${NC} ${DIM}(LVM, RAID, ZFS)${NC}"
         echo -e "  ${BRIGHT_GREEN}[4]${NC} ${WHITE}Package Management${NC}"
         echo -e "  ${BRIGHT_GREEN}[5]${NC} ${WHITE}Network Tools${NC}"
+        echo -e "  ${BRIGHT_GREEN}[6]${NC} ${WHITE}File Management${NC}"
         echo ""
         echo -e "  ${BRIGHT_RED}[0]${NC} ${WHITE}Exit${NC}"
         echo ""
@@ -69,6 +70,7 @@ main_menu() {
             3) disk_management_menu ;;
             4) package_management_menu ;;
             5) network_tools_menu ;;
+            6) file_management_menu ;;
             0) clear; exit 0 ;;
         esac
     done
@@ -4877,6 +4879,457 @@ create_network_bond() {
         cat "/proc/net/bonding/$bond_name" 2>/dev/null || echo "Status info not available"
     else
         echo -e "${BRIGHT_RED}✗ Failed to create bond${NC}"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+#=============================================================================
+# FILE MANAGEMENT MENU
+#=============================================================================
+
+# File Management menu
+file_management_menu() {
+    while true; do
+        show_header
+        echo -e "${BRIGHT_CYAN}╭─────────────────────────────────────────────────────────────╮${NC}"
+        echo -e "${BRIGHT_CYAN}│${NC}  ${WHITE}${BOLD}FILE MANAGEMENT${NC}                                         ${BRIGHT_CYAN}│${NC}"
+        echo -e "${BRIGHT_CYAN}╰─────────────────────────────────────────────────────────────╯${NC}"
+        echo ""
+        echo -e "  ${BRIGHT_GREEN}[1]${NC} ${WHITE}Navigate Directories${NC}     ${DIM}- Browse filesystem${NC}"
+        echo -e "  ${BRIGHT_GREEN}[2]${NC} ${WHITE}Show Directory Sizes${NC}     ${DIM}- View disk usage${NC}"
+        echo -e "  ${BRIGHT_GREEN}[3]${NC} ${WHITE}Create Directory${NC}         ${DIM}- Make new directory${NC}"
+        echo -e "  ${BRIGHT_GREEN}[4]${NC} ${WHITE}Delete Directory${NC}         ${DIM}- Remove directory${NC}"
+        echo -e "  ${BRIGHT_GREEN}[5]${NC} ${WHITE}Rename Directory${NC}         ${DIM}- Rename directory${NC}"
+        echo ""
+        echo -e "  ${BRIGHT_RED}[0]${NC} ${WHITE}Back to Main Menu${NC}"
+        echo ""
+        echo -e "${DIM}${BRIGHT_CYAN}───────────────────────────────────────────────────────────────${NC}"
+        echo -e "Press a number key: "
+
+        read -n 1 -s choice
+        echo ""
+
+        case $choice in
+            1) navigate_directories ;;
+            2) show_directory_sizes ;;
+            3) create_directory ;;
+            4) delete_directory ;;
+            5) rename_directory ;;
+            0) return ;;
+        esac
+    done
+}
+
+# Navigate directories
+navigate_directories() {
+    local current_dir="${1:-$PWD}"
+
+    while true; do
+        clear
+        echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+        echo -e "${BRIGHT_PURPLE}║${NC}  ${WHITE}${BOLD}NAVIGATE DIRECTORIES${NC}                                      ${BRIGHT_PURPLE}║${NC}"
+        echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+        echo ""
+        echo -e "${BRIGHT_CYAN}Current directory:${NC} ${WHITE}$current_dir${NC}"
+        echo ""
+
+        # Check if directory exists and is accessible
+        if [ ! -d "$current_dir" ]; then
+            echo -e "${RED}Directory does not exist or is not accessible${NC}"
+            read -p "Press Enter to go back..."
+            return
+        fi
+
+        # List contents with numbering
+        echo -e "${BRIGHT_YELLOW}┌─ Contents ───────────────────────────────────────────────────┐${NC}"
+
+        # Show parent directory option
+        echo -e "  ${BRIGHT_GREEN}[0]${NC} ${DIM}..${NC} ${DIM}(Parent directory)${NC}"
+
+        # Get directories and files
+        local i=1
+        local -a items
+        items[0]=".."
+
+        # List directories first
+        while IFS= read -r dir; do
+            if [ -n "$dir" ]; then
+                items[$i]="$dir"
+                printf "  ${BRIGHT_GREEN}[%2d]${NC} ${BRIGHT_BLUE}%s${NC} ${DIM}(directory)${NC}\n" "$i" "$(basename "$dir")"
+                ((i++))
+            fi
+        done < <(find "$current_dir" -maxdepth 1 -type d ! -path "$current_dir" 2>/dev/null | sort)
+
+        # Then list files
+        while IFS= read -r file; do
+            if [ -n "$file" ]; then
+                items[$i]="$file"
+                local size=$(du -h "$file" 2>/dev/null | awk '{print $1}')
+                printf "  ${BRIGHT_GREEN}[%2d]${NC} %s ${DIM}(%s)${NC}\n" "$i" "$(basename "$file")" "$size"
+                ((i++))
+            fi
+        done < <(find "$current_dir" -maxdepth 1 -type f 2>/dev/null | sort)
+
+        echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+        echo ""
+        echo -e "${DIM}Total items: $((i-1))${NC}"
+        echo ""
+        echo -e "Enter number to navigate, or type:"
+        echo -e "  ${BRIGHT_CYAN}p${NC} - Enter path manually"
+        echo -e "  ${BRIGHT_CYAN}h${NC} - Go to home directory"
+        echo -e "  ${BRIGHT_CYAN}q${NC} - Quit navigation"
+        echo ""
+        read -p "Choice: " nav_choice
+
+        case "$nav_choice" in
+            q|Q)
+                return
+                ;;
+            p|P)
+                read -p "Enter path: " new_path
+                if [ -d "$new_path" ]; then
+                    current_dir="$(cd "$new_path" && pwd)"
+                else
+                    echo -e "${RED}Invalid path${NC}"
+                    read -p "Press Enter to continue..."
+                fi
+                ;;
+            h|H)
+                current_dir="$HOME"
+                ;;
+            *)
+                if [[ "$nav_choice" =~ ^[0-9]+$ ]] && [ "$nav_choice" -ge 0 ] && [ "$nav_choice" -lt "$i" ]; then
+                    local selected="${items[$nav_choice]}"
+                    if [ "$selected" = ".." ]; then
+                        current_dir="$(dirname "$current_dir")"
+                    elif [ -d "$selected" ]; then
+                        current_dir="$selected"
+                    else
+                        echo ""
+                        echo -e "${BRIGHT_CYAN}File:${NC} $(basename "$selected")"
+                        echo -e "${BRIGHT_CYAN}Size:${NC} $(du -h "$selected" 2>/dev/null | awk '{print $1}')"
+                        echo -e "${BRIGHT_CYAN}Type:${NC} $(file -b "$selected" 2>/dev/null)"
+                        echo ""
+                        read -p "Press Enter to continue..."
+                    fi
+                else
+                    echo -e "${RED}Invalid selection${NC}"
+                    read -p "Press Enter to continue..."
+                fi
+                ;;
+        esac
+    done
+}
+
+# Show directory sizes
+show_directory_sizes() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${WHITE}${BOLD}DIRECTORY SIZES${NC}                                           ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    read -p "Enter directory path (or press Enter for current directory): " dir_path
+
+    if [ -z "$dir_path" ]; then
+        dir_path="$PWD"
+    fi
+
+    if [ ! -d "$dir_path" ]; then
+        echo -e "${RED}Directory does not exist${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo ""
+    echo -e "${BRIGHT_CYAN}Analyzing directory:${NC} ${WHITE}$dir_path${NC}"
+    echo ""
+    echo -e "${BRIGHT_YELLOW}┌─ Directory Sizes ────────────────────────────────────────────┐${NC}"
+    echo ""
+
+    # Show total size first
+    local total_size=$(du -sh "$dir_path" 2>/dev/null | awk '{print $1}')
+    echo -e "${BRIGHT_CYAN}Total size:${NC} ${WHITE}$total_size${NC}"
+    echo ""
+
+    # Sort options
+    echo -e "${BRIGHT_CYAN}Sort by:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} Size (largest first)"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} Name (alphabetical)"
+    echo ""
+    read -p "Choice (default: 1): " sort_choice
+
+    echo ""
+    echo -e "${DIM}Calculating sizes...${NC}"
+    echo ""
+
+    case "$sort_choice" in
+        2)
+            du -h --max-depth=1 "$dir_path" 2>/dev/null | sort -k2
+            ;;
+        *)
+            du -h --max-depth=1 "$dir_path" 2>/dev/null | sort -hr
+            ;;
+    esac
+
+    echo ""
+    echo -e "${BRIGHT_YELLOW}└──────────────────────────────────────────────────────────────┘${NC}"
+    echo ""
+
+    # Offer detailed breakdown
+    read -p "Show detailed breakdown of a subdirectory? (y/n): " -n 1 show_detail
+    echo ""
+
+    if [[ $show_detail =~ ^[Yy]$ ]]; then
+        read -p "Enter subdirectory name: " subdir
+        local full_path="$dir_path/$subdir"
+
+        if [ -d "$full_path" ]; then
+            echo ""
+            echo -e "${BRIGHT_CYAN}Detailed view of:${NC} ${WHITE}$full_path${NC}"
+            echo ""
+            du -h --max-depth=1 "$full_path" 2>/dev/null | sort -hr | head -20
+        else
+            echo -e "${RED}Subdirectory not found${NC}"
+        fi
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Create directory
+create_directory() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${WHITE}${BOLD}CREATE DIRECTORY${NC}                                          ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_CYAN}Current directory:${NC} ${WHITE}$PWD${NC}"
+    echo ""
+
+    read -p "Enter directory name or full path: " dir_name
+
+    if [ -z "$dir_name" ]; then
+        echo -e "${RED}Directory name cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Create parent directories option
+    echo ""
+    echo -e "${BRIGHT_CYAN}Options:${NC}"
+    echo -e "  ${BRIGHT_GREEN}[1]${NC} Create only this directory"
+    echo -e "  ${BRIGHT_GREEN}[2]${NC} Create parent directories if needed (mkdir -p)"
+    echo ""
+    read -p "Choice (default: 1): " create_choice
+
+    echo ""
+
+    case "$create_choice" in
+        2)
+            mkdir -p "$dir_name"
+            ;;
+        *)
+            mkdir "$dir_name"
+            ;;
+    esac
+
+    if [ $? -eq 0 ]; then
+        echo -e "${BRIGHT_GREEN}✓ Directory created successfully${NC}"
+        echo -e "${BRIGHT_CYAN}Location:${NC} $(realpath "$dir_name" 2>/dev/null || echo "$dir_name")"
+
+        # Set permissions option
+        echo ""
+        read -p "Set custom permissions? (y/n): " -n 1 set_perms
+        echo ""
+
+        if [[ $set_perms =~ ^[Yy]$ ]]; then
+            read -p "Enter permissions (e.g., 755, 700): " perms
+            chmod "$perms" "$dir_name" 2>/dev/null
+            if [ $? -eq 0 ]; then
+                echo -e "${BRIGHT_GREEN}✓ Permissions set to $perms${NC}"
+            else
+                echo -e "${YELLOW}Could not set permissions${NC}"
+            fi
+        fi
+    else
+        echo -e "${BRIGHT_RED}✗ Failed to create directory${NC}"
+        echo -e "${YELLOW}Common reasons:${NC}"
+        echo -e "  - Directory already exists"
+        echo -e "  - Insufficient permissions"
+        echo -e "  - Parent directory does not exist (use option 2)"
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Delete directory
+delete_directory() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${WHITE}${BOLD}DELETE DIRECTORY${NC}                                          ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_RED}⚠  Warning: This will permanently delete the directory${NC}"
+    echo ""
+    echo -e "${BRIGHT_CYAN}Current directory:${NC} ${WHITE}$PWD${NC}"
+    echo ""
+
+    read -p "Enter directory name or full path to delete: " dir_name
+
+    if [ -z "$dir_name" ]; then
+        echo -e "${RED}Directory name cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    if [ ! -e "$dir_name" ]; then
+        echo -e "${RED}Directory does not exist${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    if [ ! -d "$dir_name" ]; then
+        echo -e "${RED}Path is not a directory${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Get directory info
+    local full_path="$(realpath "$dir_name" 2>/dev/null || echo "$dir_name")"
+    local dir_size=$(du -sh "$dir_name" 2>/dev/null | awk '{print $1}')
+    local item_count=$(find "$dir_name" -type f 2>/dev/null | wc -l)
+
+    echo ""
+    echo -e "${BRIGHT_YELLOW}Directory information:${NC}"
+    echo -e "  Path: ${WHITE}$full_path${NC}"
+    echo -e "  Size: ${WHITE}$dir_size${NC}"
+    echo -e "  Files: ${WHITE}$item_count${NC}"
+    echo ""
+
+    # Check if directory is empty
+    if [ -z "$(ls -A "$dir_name" 2>/dev/null)" ]; then
+        echo -e "${BRIGHT_CYAN}Directory is empty${NC}"
+        echo ""
+        read -p "Delete this directory? (y/n): " -n 1 confirm
+        echo ""
+
+        if [[ $confirm =~ ^[Yy]$ ]]; then
+            rmdir "$dir_name"
+            if [ $? -eq 0 ]; then
+                echo -e "${BRIGHT_GREEN}✓ Directory deleted successfully${NC}"
+            else
+                echo -e "${BRIGHT_RED}✗ Failed to delete directory${NC}"
+            fi
+        else
+            echo -e "${YELLOW}Cancelled${NC}"
+        fi
+    else
+        echo -e "${BRIGHT_YELLOW}Directory is not empty${NC}"
+        echo ""
+        echo -e "${BRIGHT_RED}⚠  WARNING: This will delete all contents!${NC}"
+        echo ""
+        read -p "Type 'DELETE' to confirm deletion: " confirm
+
+        if [ "$confirm" = "DELETE" ]; then
+            rm -rf "$dir_name"
+            if [ $? -eq 0 ]; then
+                echo -e "${BRIGHT_GREEN}✓ Directory and all contents deleted${NC}"
+            else
+                echo -e "${BRIGHT_RED}✗ Failed to delete directory${NC}"
+            fi
+        else
+            echo -e "${YELLOW}Cancelled - confirmation did not match${NC}"
+        fi
+    fi
+
+    echo ""
+    read -p "Press Enter to continue..."
+}
+
+# Rename directory
+rename_directory() {
+    clear
+    echo -e "${BRIGHT_PURPLE}╔═══════════════════════════════════════════════════════════════╗${NC}"
+    echo -e "${BRIGHT_PURPLE}║${NC}  ${WHITE}${BOLD}RENAME DIRECTORY${NC}                                          ${BRIGHT_PURPLE}║${NC}"
+    echo -e "${BRIGHT_PURPLE}╚═══════════════════════════════════════════════════════════════╝${NC}"
+    echo ""
+
+    echo -e "${BRIGHT_CYAN}Current directory:${NC} ${WHITE}$PWD${NC}"
+    echo ""
+
+    read -p "Enter current directory name or path: " old_name
+
+    if [ -z "$old_name" ]; then
+        echo -e "${RED}Directory name cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    if [ ! -e "$old_name" ]; then
+        echo -e "${RED}Directory does not exist${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    if [ ! -d "$old_name" ]; then
+        echo -e "${RED}Path is not a directory${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    local old_path="$(realpath "$old_name" 2>/dev/null || echo "$old_name")"
+
+    echo ""
+    echo -e "${BRIGHT_CYAN}Current name:${NC} ${WHITE}$(basename "$old_path")${NC}"
+    echo -e "${BRIGHT_CYAN}Full path:${NC} ${WHITE}$old_path${NC}"
+    echo ""
+
+    read -p "Enter new name: " new_name
+
+    if [ -z "$new_name" ]; then
+        echo -e "${RED}New name cannot be empty${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    # Determine the new path
+    local dir_parent="$(dirname "$old_path")"
+    local new_path="$dir_parent/$new_name"
+
+    if [ -e "$new_path" ]; then
+        echo -e "${RED}A directory with that name already exists${NC}"
+        read -p "Press Enter to continue..."
+        return
+    fi
+
+    echo ""
+    echo -e "${BRIGHT_YELLOW}Rename:${NC}"
+    echo -e "  From: ${WHITE}$old_path${NC}"
+    echo -e "  To:   ${WHITE}$new_path${NC}"
+    echo ""
+    read -p "Confirm rename? (y/n): " -n 1 confirm
+    echo ""
+
+    if [[ $confirm =~ ^[Yy]$ ]]; then
+        mv "$old_path" "$new_path"
+        if [ $? -eq 0 ]; then
+            echo ""
+            echo -e "${BRIGHT_GREEN}✓ Directory renamed successfully${NC}"
+            echo -e "${BRIGHT_CYAN}New location:${NC} ${WHITE}$new_path${NC}"
+        else
+            echo ""
+            echo -e "${BRIGHT_RED}✗ Failed to rename directory${NC}"
+        fi
+    else
+        echo ""
+        echo -e "${YELLOW}Cancelled${NC}"
     fi
 
     echo ""
