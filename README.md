@@ -21,9 +21,9 @@ A fast and lightweight terminal UI (TUI) for Linux system administration, built 
   - Change user shells
   - Lock/unlock user accounts
 - **Package Management**: Universal package manager support (apt/yum/dnf)
-  - Update package lists
+  - Intelligent package search with numbered selection
   - Install and remove packages
-  - Upgrade entire system
+  - Upgrade system (all or specific packages)
   - Search for packages
   - List installed packages
   - Clean package cache
@@ -36,7 +36,14 @@ A fast and lightweight terminal UI (TUI) for Linux system administration, built 
   - Network speed test (speedtest-cli)
   - Flush DNS cache (systemd-resolved/dnsmasq/nscd)
   - Restart network services
-  - View firewall rules (nftables/iptables/firewalld/ufw)
+  - Create virtual interfaces (VLAN, Alias, Bridge, Dummy)
+  - Create network bonds (all bonding modes)
+- **File Management**: Easy directory and filesystem navigation
+  - Interactive directory browser with numbered navigation
+  - View directory sizes with detailed breakdown
+  - Create directories with permission control
+  - Delete directories with safety confirmations
+  - Rename directories
 - **Disk Management (LVM, RAID, ZFS)**: Complete storage administration
   - **LVM**: Create/manage Physical Volumes, Volume Groups, Logical Volumes
   - **RAID**: Configure and manage mdadm RAID arrays (0, 1, 5, 6, 10)
@@ -54,12 +61,13 @@ A fast and lightweight terminal UI (TUI) for Linux system administration, built 
 The interface features:
 - Clean terminal-based menus with color coding
 - Single-keypress navigation (no Enter needed!)
-- Five main sections:
+- Six main sections:
   - **System Information**: System Info, Services, Processes, Disk Usage
   - **User & Group Management**: 8 different user/group operations
   - **Disk Management**: LVM, RAID, ZFS, Partitioning, Filesystems, Mount operations
-  - **Package Management**: 7 package operations with auto-detection (apt/yum/dnf)
-  - **Network Tools**: 9 networking utilities for diagnostics and configuration
+  - **Package Management**: 7 package operations with intelligent search
+  - **Network Tools**: 10 networking utilities including virtual interfaces and bonding
+  - **File Management**: 5 directory operations for easy filesystem navigation
 - Real-time data display
 - Interactive prompts for user actions
 - No commands required - everything through menus
@@ -138,9 +146,9 @@ LazyAdmin Main Menu
 │
 ├── [4] Package Management (apt/yum/dnf)
 │   ├── [1] Update Package Lists     - Refresh available packages
-│   ├── [2] Install a Package        - Install new software
-│   ├── [3] Remove a Package         - Uninstall software
-│   ├── [4] Upgrade System           - Update all packages
+│   ├── [2] Install a Package        - Search and install with numbered selection
+│   ├── [3] Remove a Package         - Search and remove with numbered selection
+│   ├── [4] Upgrade System           - Upgrade all or specific packages
 │   ├── [5] Search Package           - Find packages by name
 │   ├── [6] List Installed Packages  - Show installed software
 │   └── [7] Clean Package Cache      - Free up disk space
@@ -154,7 +162,15 @@ LazyAdmin Main Menu
 │   ├── [6] Network Speed Test       - Test download/upload speeds (speedtest-cli)
 │   ├── [7] Flush DNS Cache          - Clear DNS cache (systemd-resolved/dnsmasq/nscd)
 │   ├── [8] Restart Network Service  - Restart NetworkManager/systemd-networkd/networking
-│   └── [9] View Firewall Rules      - Display firewall configuration (nftables/iptables/firewalld/ufw)
+│   ├── [9] Create Virtual Interface - Create VLAN, Alias, Bridge, or Dummy interfaces
+│   └── [10] Create Network Bond     - Bond interfaces with all bonding modes
+│
+├── [6] File Management
+│   ├── [1] Navigate Directories     - Browse filesystem with numbered selection
+│   ├── [2] Show Directory Sizes     - View disk usage with sort options
+│   ├── [3] Create Directory         - Create directories with permission control
+│   ├── [4] Delete Directory         - Remove directories with safety checks
+│   └── [5] Rename Directory         - Rename existing directories
 │
 └── [0] Exit
 ```
@@ -278,6 +294,50 @@ Complete networking diagnostic and configuration toolkit:
 - Network speed test using speedtest-cli
 - Optional installation of speedtest-cli if not present
 - Download and upload speed measurements
+
+**Virtual Networking:**
+- Create virtual interfaces: VLAN (802.1Q), Alias, Bridge, Dummy
+- Network bonding with all 7 bonding modes (balance-rr, active-backup, balance-xor, broadcast, 802.3ad/LACP, balance-tlb, balance-alb)
+- Multi-interface selection for bonding
+- Automatic IP configuration and interface management
+
+### File Management
+
+Easy and intuitive directory navigation and management:
+
+**Interactive Directory Browser:**
+- Navigate filesystem with numbered selection
+- Browse directories and view files
+- Quick navigation options: parent directory, manual path entry, home directory
+- Display file sizes and types
+- Support for both directories and files
+
+**Directory Size Analysis:**
+- View sizes of all subdirectories
+- Sort by size or name
+- Detailed breakdown of large directories
+- Recursive size calculation with du
+- Human-readable size display
+
+**Directory Operations:**
+- Create directories with optional parent directory creation (mkdir -p)
+- Set custom permissions during creation
+- Delete directories with safety confirmations
+- Empty directory detection with simple confirmation
+- Non-empty directories require typing 'DELETE' to confirm
+- Rename directories with path validation
+- Real-time feedback and error handling
+
+### Package Management
+
+**Intelligent Search and Selection:**
+- Search for packages by keyword (e.g., "apache", "python")
+- Display up to 20 matching packages with numbered selection
+- Install packages by selecting from search results
+- Remove packages with search and numbered selection
+- Upgrade all packages or search for specific package to upgrade
+- Support for apt, dnf, and yum package managers
+- Non-interactive mode with automatic yes (-y flag)
 
 ## Why LazyAdmin?
 
